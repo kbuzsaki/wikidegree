@@ -59,7 +59,7 @@ func loadPages(titles <-chan string, pages chan<- WikiPage) {
 
 func parsePages(pages <-chan WikiPage, parsedPages chan<- ParsedWikiPage) {
     for page := range pages {
-        parsedPages <- ParseTitles(page)
+        parsedPages <- ParsePage(page)
     }
 }
 
@@ -79,7 +79,7 @@ func FindNearestPathSerial(start string, end string) []string {
 
         fmt.Printf("Loading: %s\n", next)
         if page, err := LoadPageContent(next); err == nil {
-            parsedPage := ParseTitles(page)
+            parsedPage := ParsePage(page)
 
             for _, title := range parsedPage.links {
                 if len(visited[title]) == 0 {

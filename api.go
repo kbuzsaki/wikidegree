@@ -46,19 +46,19 @@ func LoadPageContent(title string) (page WikiPage, err error) {
     return
 }
 
-func ParseTitles(page WikiPage) ParsedWikiPage {
+func ParsePage(page WikiPage) ParsedWikiPage {
     regex, _ := regexp.Compile("\\[\\[(.+?)(\\]\\]|\\||#)")
 
     matches := regex.FindAllStringSubmatch(page.content, -1)
 
-    var titles []string
+    var links []string
     for _, match := range matches {
-        title := match[1]
-        title = encodeTitle(title)
-        titles = append(titles, title)
+        link := match[1]
+        link = encodeTitle(link)
+        links = append(links, link)
     }
 
-    return ParsedWikiPage{page.title, titles}
+    return ParsedWikiPage{page.title, links}
 }
 
 func encodeTitle(title string) string {
