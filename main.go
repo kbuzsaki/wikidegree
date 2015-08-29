@@ -5,7 +5,7 @@ import "fmt"
 func main() {
 	fmt.Printf("Hello, world.\n")
 
-    path := FindNearestPath("hydrogen", "hungary")
+    path := FindNearestPathDualGoroutine("hydrogen", "hungary")
 
     fmt.Printf("Final path:\n")
     for _, element := range path {
@@ -13,7 +13,68 @@ func main() {
     }
 }
 
-func FindNearestPath(start string, end string) []string {
+const FrontierSize = 10 * 1000 * 1000
+const NumScraperThreads = 10
+
+func FindNearestPathDualGoroutine(start string, end string) []string {
+    titles := make(chan string, FrontierSize)
+    pages := make(chan Page, 10)
+    parsedPages := make(chan ParsedPage, 10)
+
+    for i := 0; i < NumScraperThreads; i++ {
+        go loadPages(titles, pages)
+    }
+    go parsePages(pages, parsedPages)
+
+    titles <- start
+    visited := make(map[string]string)
+    visited[start] = ""
+
+    for parsedPage := range parsedPages {
+        for _, link := range parsedPage.links {
+            if link == end {
+                fmt.Printf("Done!\n\n")
+                visited[link] = parsedPage.title
+                return pathFromVisited(visited, start, end)
+            } else if len(visited[link]) == 0 {
+                visited[link] = parsedPage.title
+                titles <- link
+            }
+        }
+    }
+
+    return nil
+}
+
+type Page struct {
+    title string
+    content string
+}
+
+type ParsedPage struct {
+    title string
+    links []string
+}
+
+func loadPages(titles <-chan string, pages chan<- Page) {
+    for title := range titles {
+        fmt.Printf("Loading: %s\n", title)
+        if content, ok := LoadPageContent(title); ok {
+            pages <- Page{title, content}
+        } else {
+            fmt.Printf("Failed to load '%s'\n", title)
+        }
+    }
+}
+
+func parsePages(pages <-chan Page, parsedPages chan<- ParsedPage) {
+    for page := range pages {
+        links := ParseTitles(page.content)
+        parsedPages <- ParsedPage{page.title, links}
+    }
+}
+
+func FindNearestPathSerial(start string, end string) []string {
     visited := make(map[string]string)
     visited[start] = ""
     frontier := []string{start}
