@@ -10,37 +10,46 @@ const WikiApiBase = "https://en.wikipedia.org/w/api.php"
 const WikiPageUrl = WikiApiBase + "?action=query&prop=revisions&rvprop=content&format=json&titles="
 
 type WikiPage struct {
-    Pageid int
-    Title string
-    Revisions []map[string]string
+    title string
+    content string
 }
 
-type WikiPageQuery struct {
-    Query struct {
-        Pages map[string]WikiPage
-    }
+type ParsedWikiPage struct {
+    title string
+    links []string
 }
 
-func LoadPageContent(title string) (string, bool) {
+func LoadPageContent(title string) (page WikiPage, err error) {
     url := WikiPageUrl + title
-    response, _ := http.Get(url)
-    body, _ := ioutil.ReadAll(response.Body)
+    response, err := http.Get(url)
+    if err != nil {
+        return
+    }
 
-    var query WikiPageQuery
-    json.Unmarshal(body, &query)
+    body, err := ioutil.ReadAll(response.Body)
+    if err != nil {
+        return
+    }
 
-    for _, page := range query.Query.Pages {
-        for _, revision := range page.Revisions {
-            return revision["*"], true
+    var query jsonWikiPageQuery
+    err = json.Unmarshal(body, &query)
+    if err != nil {
+        return
+    }
+
+    for _, jsonPage := range query.Query.Pages {
+        for _, revision := range jsonPage.Revisions {
+            page = WikiPage{title, revision["*"]}
+            return
         }
     }
-    return "", false
+    return
 }
 
-func ParseTitles(content string) []string {
+func ParseTitles(page WikiPage) ParsedWikiPage {
     regex, _ := regexp.Compile("\\[\\[(.+?)(\\]\\]|\\||#)")
 
-    matches := regex.FindAllStringSubmatch(content, -1)
+    matches := regex.FindAllStringSubmatch(page.content, -1)
 
     var titles []string
     for _, match := range matches {
@@ -49,7 +58,7 @@ func ParseTitles(content string) []string {
         titles = append(titles, title)
     }
 
-    return titles
+    return ParsedWikiPage{page.title, titles}
 }
 
 func encodeTitle(title string) string {
@@ -58,4 +67,15 @@ func encodeTitle(title string) string {
     return title
 }
 
+type jsonWikiPage struct {
+    Pageid int
+    Title string
+    Revisions []map[string]string
+}
+
+type jsonWikiPageQuery struct {
+    Query struct {
+        Pages map[string]jsonWikiPage
+    }
+}
 

@@ -18,8 +18,8 @@ const NumScraperThreads = 10
 
 func FindNearestPathDualGoroutine(start string, end string) []string {
     titles := make(chan string, FrontierSize)
-    pages := make(chan Page, 10)
-    parsedPages := make(chan ParsedPage, 10)
+    pages := make(chan WikiPage, 10)
+    parsedPages := make(chan ParsedWikiPage, 10)
 
     for i := 0; i < NumScraperThreads; i++ {
         go loadPages(titles, pages)
@@ -46,31 +46,20 @@ func FindNearestPathDualGoroutine(start string, end string) []string {
     return nil
 }
 
-type Page struct {
-    title string
-    content string
-}
-
-type ParsedPage struct {
-    title string
-    links []string
-}
-
-func loadPages(titles <-chan string, pages chan<- Page) {
+func loadPages(titles <-chan string, pages chan<- WikiPage) {
     for title := range titles {
         fmt.Printf("Loading: %s\n", title)
-        if content, ok := LoadPageContent(title); ok {
-            pages <- Page{title, content}
+        if page, err := LoadPageContent(title); err == nil {
+            pages <- page
         } else {
             fmt.Printf("Failed to load '%s'\n", title)
         }
     }
 }
 
-func parsePages(pages <-chan Page, parsedPages chan<- ParsedPage) {
+func parsePages(pages <-chan WikiPage, parsedPages chan<- ParsedWikiPage) {
     for page := range pages {
-        links := ParseTitles(page.content)
-        parsedPages <- ParsedPage{page.title, links}
+        parsedPages <- ParseTitles(page)
     }
 }
 
@@ -89,10 +78,10 @@ func FindNearestPathSerial(start string, end string) []string {
         next, frontier = frontier[0], frontier[1:]
 
         fmt.Printf("Loading: %s\n", next)
-        if content, ok := LoadPageContent(next); ok {
-            titles := ParseTitles(content)
+        if page, err := LoadPageContent(next); err == nil {
+            parsedPage := ParseTitles(page)
 
-            for _, title := range titles {
+            for _, title := range parsedPage.links {
                 if len(visited[title]) == 0 {
                     frontier = append(frontier, title)
                     visited[title] = next
