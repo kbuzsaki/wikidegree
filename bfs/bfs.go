@@ -1,7 +1,9 @@
 package bfs
 
-import "fmt"
-import api "github.com/kbuzsaki/wikidegree/api"
+import (
+    "fmt"
+    api "github.com/kbuzsaki/wikidegree/api"
+)
 
 const frontierSize = 10 * 1000 * 1000
 const numScraperThreads = 10

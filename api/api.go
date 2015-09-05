@@ -1,10 +1,12 @@
 package api
 
-import "encoding/json"
-import "io/ioutil"
-import "net/http"
-import "regexp"
-import "strings"
+import (
+    "encoding/json"
+    "io/ioutil"
+    "net/http"
+    "regexp"
+    "strings"
+)
 
 const apiBaseUrl = "https://en.wikipedia.org/w/api.php"
 const pageUrl = apiBaseUrl + "?action=query&prop=revisions&rvprop=content&format=json&titles="

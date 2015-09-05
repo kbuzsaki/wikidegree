@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
-import bfs "github.com/kbuzsaki/wikidegree/bfs"
+import (
+    "fmt"
+    bfs "github.com/kbuzsaki/wikidegree/bfs"
+)
 
 func main() {
 	fmt.Printf("Hello, world.\n")
