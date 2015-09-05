@@ -1,4 +1,4 @@
-package main
+package api
 
 import "encoding/json"
 import "io/ioutil"
@@ -10,13 +10,13 @@ const WikiApiBase = "https://en.wikipedia.org/w/api.php"
 const WikiPageUrl = WikiApiBase + "?action=query&prop=revisions&rvprop=content&format=json&titles="
 
 type WikiPage struct {
-    title string
-    content string
+    Title string
+    Content string
 }
 
 type ParsedWikiPage struct {
-    title string
-    links []string
+    Title string
+    Links []string
 }
 
 func LoadPageContent(title string) (page WikiPage, err error) {
@@ -49,7 +49,7 @@ func LoadPageContent(title string) (page WikiPage, err error) {
 func ParsePage(page WikiPage) ParsedWikiPage {
     regex, _ := regexp.Compile("\\[\\[(.+?)(\\]\\]|\\||#)")
 
-    matches := regex.FindAllStringSubmatch(page.content, -1)
+    matches := regex.FindAllStringSubmatch(page.Content, -1)
 
     var links []string
     for _, match := range matches {
@@ -58,7 +58,7 @@ func ParsePage(page WikiPage) ParsedWikiPage {
         links = append(links, link)
     }
 
-    return ParsedWikiPage{page.title, links}
+    return ParsedWikiPage{page.Title, links}
 }
 
 func encodeTitle(title string) string {

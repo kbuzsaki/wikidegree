@@ -1,11 +1,12 @@
 package main
 
 import "fmt"
+import bfs "github.com/kbuzsaki/wikidegree/bfs"
 
 func main() {
 	fmt.Printf("Hello, world.\n")
 
-    path := FindNearestPathBfsParallel("hydrogen", "hungary")
+    path := bfs.FindNearestPathParallel("hydrogen", "hungary")
 
     fmt.Printf("Final path:\n")
     for _, element := range path {

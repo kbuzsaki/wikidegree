@@ -1,14 +1,15 @@
-package main
+package bfs
 
 import "fmt"
+import api "github.com/kbuzsaki/wikidegree/api"
 
 const frontierSize = 10 * 1000 * 1000
 const numScraperThreads = 10
 
-func FindNearestPathBfsParallel(start string, end string) []string {
+func FindNearestPathParallel(start string, end string) []string {
     titles := make(chan string, frontierSize)
-    pages := make(chan WikiPage, 10)
-    parsedPages := make(chan ParsedWikiPage, 10)
+    pages := make(chan api.WikiPage, 10)
+    parsedPages := make(chan api.ParsedWikiPage, 10)
 
     for i := 0; i < numScraperThreads; i++ {
         go loadPages(titles, pages)
@@ -20,13 +21,13 @@ func FindNearestPathBfsParallel(start string, end string) []string {
     visited[start] = ""
 
     for parsedPage := range parsedPages {
-        for _, link := range parsedPage.links {
+        for _, link := range parsedPage.Links {
             if link == end {
                 fmt.Printf("Done!\n\n")
-                visited[link] = parsedPage.title
+                visited[link] = parsedPage.Title
                 return pathFromVisited(visited, start, end)
             } else if len(visited[link]) == 0 {
-                visited[link] = parsedPage.title
+                visited[link] = parsedPage.Title
                 titles <- link
             }
         }
@@ -35,10 +36,10 @@ func FindNearestPathBfsParallel(start string, end string) []string {
     return nil
 }
 
-func loadPages(titles <-chan string, pages chan<- WikiPage) {
+func loadPages(titles <-chan string, pages chan<- api.WikiPage) {
     for title := range titles {
         fmt.Printf("Loading: %s\n", title)
-        if page, err := LoadPageContent(title); err == nil {
+        if page, err := api.LoadPageContent(title); err == nil {
             pages <- page
         } else {
             fmt.Printf("Failed to load '%s'\n", title)
@@ -46,13 +47,13 @@ func loadPages(titles <-chan string, pages chan<- WikiPage) {
     }
 }
 
-func parsePages(pages <-chan WikiPage, parsedPages chan<- ParsedWikiPage) {
+func parsePages(pages <-chan api.WikiPage, parsedPages chan<- api.ParsedWikiPage) {
     for page := range pages {
-        parsedPages <- ParsePage(page)
+        parsedPages <- api.ParsePage(page)
     }
 }
 
-func FindNearestPathBfsSerial(start string, end string) []string {
+func FindNearestPathSerial(start string, end string) []string {
     visited := make(map[string]string)
     visited[start] = ""
     frontier := []string{start}
@@ -67,10 +68,10 @@ func FindNearestPathBfsSerial(start string, end string) []string {
         next, frontier = frontier[0], frontier[1:]
 
         fmt.Printf("Loading: %s\n", next)
-        if page, err := LoadPageContent(next); err == nil {
-            parsedPage := ParsePage(page)
+        if page, err := api.LoadPageContent(next); err == nil {
+            parsedPage := api.ParsePage(page)
 
-            for _, title := range parsedPage.links {
+            for _, title := range parsedPage.Links {
                 if len(visited[title]) == 0 {
                     frontier = append(frontier, title)
                     visited[title] = next
