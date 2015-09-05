@@ -6,21 +6,21 @@ import "net/http"
 import "regexp"
 import "strings"
 
-const WikiApiBase = "https://en.wikipedia.org/w/api.php"
-const WikiPageUrl = WikiApiBase + "?action=query&prop=revisions&rvprop=content&format=json&titles="
+const apiBaseUrl = "https://en.wikipedia.org/w/api.php"
+const pageUrl = apiBaseUrl + "?action=query&prop=revisions&rvprop=content&format=json&titles="
 
-type WikiPage struct {
+type Page struct {
     Title string
     Content string
 }
 
-type ParsedWikiPage struct {
+type ParsedPage struct {
     Title string
     Links []string
 }
 
-func LoadPageContent(title string) (page WikiPage, err error) {
-    url := WikiPageUrl + title
+func LoadPageContent(title string) (page Page, err error) {
+    url := pageUrl + title
     response, err := http.Get(url)
     if err != nil {
         return
@@ -31,7 +31,7 @@ func LoadPageContent(title string) (page WikiPage, err error) {
         return
     }
 
-    var query jsonWikiPageQuery
+    var query jsonPageQuery
     err = json.Unmarshal(body, &query)
     if err != nil {
         return
@@ -39,14 +39,14 @@ func LoadPageContent(title string) (page WikiPage, err error) {
 
     for _, jsonPage := range query.Query.Pages {
         for _, revision := range jsonPage.Revisions {
-            page = WikiPage{title, revision["*"]}
+            page = Page{title, revision["*"]}
             return
         }
     }
     return
 }
 
-func ParsePage(page WikiPage) ParsedWikiPage {
+func ParsePage(page Page) ParsedPage {
     regex, _ := regexp.Compile("\\[\\[(.+?)(\\]\\]|\\||#)")
 
     matches := regex.FindAllStringSubmatch(page.Content, -1)
@@ -58,7 +58,7 @@ func ParsePage(page WikiPage) ParsedWikiPage {
         links = append(links, link)
     }
 
-    return ParsedWikiPage{page.Title, links}
+    return ParsedPage{page.Title, links}
 }
 
 func encodeTitle(title string) string {
@@ -67,15 +67,15 @@ func encodeTitle(title string) string {
     return title
 }
 
-type jsonWikiPage struct {
+type jsonPage struct {
     Pageid int
     Title string
     Revisions []map[string]string
 }
 
-type jsonWikiPageQuery struct {
+type jsonPageQuery struct {
     Query struct {
-        Pages map[string]jsonWikiPage
+        Pages map[string]jsonPage
     }
 }
 

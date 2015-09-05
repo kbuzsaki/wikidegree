@@ -8,8 +8,8 @@ const numScraperThreads = 10
 
 func FindNearestPathParallel(start string, end string) []string {
     titles := make(chan string, frontierSize)
-    pages := make(chan api.WikiPage, 10)
-    parsedPages := make(chan api.ParsedWikiPage, 10)
+    pages := make(chan api.Page, 10)
+    parsedPages := make(chan api.ParsedPage, 10)
 
     for i := 0; i < numScraperThreads; i++ {
         go loadPages(titles, pages)
@@ -36,7 +36,7 @@ func FindNearestPathParallel(start string, end string) []string {
     return nil
 }
 
-func loadPages(titles <-chan string, pages chan<- api.WikiPage) {
+func loadPages(titles <-chan string, pages chan<- api.Page) {
     for title := range titles {
         fmt.Printf("Loading: %s\n", title)
         if page, err := api.LoadPageContent(title); err == nil {
@@ -47,7 +47,7 @@ func loadPages(titles <-chan string, pages chan<- api.WikiPage) {
     }
 }
 
-func parsePages(pages <-chan api.WikiPage, parsedPages chan<- api.ParsedWikiPage) {
+func parsePages(pages <-chan api.Page, parsedPages chan<- api.ParsedPage) {
     for page := range pages {
         parsedPages <- api.ParsePage(page)
     }
