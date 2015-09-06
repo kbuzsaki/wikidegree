@@ -1,3 +1,7 @@
+/*
+Simple main package for running the different search algorithms.
+Maybe this will eventually turn into a decent command line interface.
+*/
 package main
 
 import (
