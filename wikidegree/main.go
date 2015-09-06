@@ -10,12 +10,12 @@ import (
 )
 
 func main() {
-	fmt.Printf("Hello, world.\n")
+	start := "hydrogen"
+	end := "hungary"
 
-	path := bfs.FindNearestPathParallel("hydrogen", "hungary")
+	fmt.Println("Finding shortest path from", start, "to", end)
+	fmt.Println()
 
-	fmt.Printf("Final path:\n")
-	for _, element := range path {
-		fmt.Printf("%s\n", element)
-	}
+	path := bfs.FindNearestPathParallel(start, end)
+	fmt.Println("Final path:", path)
 }
