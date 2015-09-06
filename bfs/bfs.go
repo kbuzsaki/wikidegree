@@ -22,7 +22,7 @@ exist.
 
 Its primary weakness is that it's a big memory hog for most searches that
 require more than ~5 hops.
-Hopefully idfs.go will help with that :)
+Hopefully iddfs.go will help with that :)
 */
 package bfs
 

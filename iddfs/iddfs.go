@@ -20,4 +20,4 @@ This algorithm is less friendly to parallelization than the breadth first
 search, but it should give much better memory efficiency at the cost of
 additioanl cpu and network.
 */
-package idfs
+package iddfs
