@@ -13,14 +13,20 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
 )
 
+const loadFrom = "api"
+
 const apiBaseUrl = "https://en.wikipedia.org/w/api.php"
 const pageUrl = apiBaseUrl + "?action=query&prop=revisions&rvprop=content&format=json&titles="
+
+// change this to use a different cache directory
+const cacheBaseDir = "./cache/"
 
 type Page struct {
 	Title   string
@@ -33,13 +39,16 @@ type ParsedPage struct {
 }
 
 func LoadPageContent(title string) (page Page, err error) {
-	url := pageUrl + title
-	response, err := http.Get(url)
-	if err != nil {
-		return
+	var body []byte
+
+	if loadFrom == "api" {
+		body, err = loadPageContentFromApi(title)
+	} else if loadFrom == "filesystem" {
+		body, err = loadPageContentFromFilesystem(title)
+	} else {
+		err = errors.New("unrecognized loadFrom: " + loadFrom)
 	}
 
-	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return
 	}
@@ -56,6 +65,23 @@ func LoadPageContent(title string) (page Page, err error) {
 			return
 		}
 	}
+	return
+}
+
+func loadPageContentFromApi(title string) (body []byte, err error) {
+	url := pageUrl + title
+	response, err := http.Get(url)
+	if err != nil {
+		return
+	}
+
+	body, err = ioutil.ReadAll(response.Body)
+	return
+}
+
+func loadPageContentFromFilesystem(title string) (body []byte, err error) {
+	filename := cacheBaseDir + title
+	body, err = ioutil.ReadFile(filename)
 	return
 }
 
