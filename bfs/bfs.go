@@ -34,7 +34,7 @@ import (
 const frontierSize = 10 * 1000 * 1000
 const numScraperThreads = 10
 
-func FindNearestPathParallel(start string, end string) []string {
+func FindNearestPathParallel(start string, end string) api.TitlePath {
 	titles := make(chan string, frontierSize)
 	pages := make(chan api.Page, 10)
 	parsedPages := make(chan api.ParsedPage, 10)
@@ -82,33 +82,43 @@ func parsePages(pages <-chan api.Page, parsedPages chan<- api.ParsedPage) {
 	}
 }
 
-func FindNearestPathSerial(start string, end string) []string {
-	visited := make(map[string]string)
-	visited[start] = ""
-	frontier := []string{start}
+
+type TitlePathQueue []api.TitlePath
+
+func (pathQueue *TitlePathQueue) Push(titlePath api.TitlePath) {
+	*pathQueue = append(*pathQueue, titlePath)
+}
+
+func (pathQueue *TitlePathQueue) Pop() api.TitlePath {
+	var titlePath api.TitlePath
+	titlePath, *pathQueue = (*pathQueue)[0], (*pathQueue)[1:]
+	return titlePath
+}
+
+func FindNearestPathSerial(start string, end string) api.TitlePath {
+	visited := make(map[string]bool)
+	visited[start] = true
+	frontier := TitlePathQueue{{start}}
 
 	for len(frontier) > 0 {
-		if len(visited[end]) > 0 {
-			fmt.Println("Done!")
-			fmt.Println()
-			return pathFromVisited(visited, start, end)
-		}
+		titlePath := frontier.Pop()
 
-		var next string
-		next, frontier = frontier[0], frontier[1:]
-
-		fmt.Println("Loading:", next)
-		if page, err := api.LoadPageContent(next); err == nil {
+		fmt.Println("Loading:", titlePath)
+		if page, err := api.LoadPageContent(titlePath.Head()); err == nil {
 			parsedPage := api.ParsePage(page)
 
 			for _, title := range parsedPage.Links {
-				if len(visited[title]) == 0 {
-					frontier = append(frontier, title)
-					visited[title] = next
+				newTitlePath := titlePath.Catted(title)
+
+				if title == end {
+					return newTitlePath
+				} else if !visited[title] {
+					visited[title] = true
+					frontier.Push(newTitlePath)
 				}
 			}
 		} else {
-			fmt.Println("Failed to load: ", next)
+			fmt.Println("Failed to load: ", titlePath.Head())
 		}
 	}
 
