@@ -27,7 +27,74 @@ import (
 	api "github.com/kbuzsaki/wikidegree/api"
 )
 
+const MaxWorkerThreads = 10
+
 const MaxDepth = 4
+
+func FindNearestPathParallel(start string, end string) api.TitlePath {
+	// iterative deepening parallel currently doesn't work,
+	// the program will deadlock once there is nothing left to read
+	//
+	// NOTE: that means this algorithm is *NOT* currently guaranteed
+	//       to find the shortest path from start to end
+	//
+	/*
+	for depthLimit := 2; depthLimit <= MaxDepth; depthLimit++ {
+		fmt.Println()
+		fmt.Println("Beginning search with depth limit", depthLimit)
+		path := depthLimitedSearchParallel(start, end, depthLimit)
+
+		if path != nil {
+			return path
+		}
+	}
+	*/
+
+	// just do a regular depth limited search instead
+	return depthLimitedSearchParallel(start, end, MaxDepth)
+}
+
+func depthLimitedSearchParallel(start string, end string, depthLimit int) api.TitlePath {
+	requestQueue := make(chan chan<- api.TitlePath)
+	loadedQueue := make(chan api.TitlePath)
+	toLoadQueue := make(chan api.TitlePath)
+
+	go DfsQueue(toLoadQueue, requestQueue)
+
+	for i := 0; i < MaxWorkerThreads; i++ {
+		go requestQueueWorker(requestQueue, loadedQueue)
+	}
+
+	toLoadQueue <- api.TitlePath{start}
+
+	for titlePath := range loadedQueue {
+		if titlePath.Head() == end {
+			return titlePath
+		} else if len(titlePath) <= depthLimit {
+			toLoadQueue <- titlePath
+		}
+	}
+
+	return nil
+}
+
+func requestQueueWorker(requestQueue chan<- chan<- api.TitlePath, output chan<- api.TitlePath) {
+	input := make(chan api.TitlePath)
+
+	for {
+		requestQueue <- input
+		titlePath := <-input
+
+		fmt.Println("Loading:", titlePath)
+		page, _ := api.LoadPageContent(titlePath.Head())
+		parsedPage := api.ParsePage(page)
+
+		for _, link := range parsedPage.Links {
+			newTitlePath := titlePath.Catted(link)
+			output <- newTitlePath
+		}
+	}
+}
 
 func FindNearestPathSerial(start string, end string) api.TitlePath {
 	for depthLimit := 1; depthLimit <= MaxDepth; depthLimit++ {
