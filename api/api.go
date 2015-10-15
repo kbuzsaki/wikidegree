@@ -28,6 +28,19 @@ const pageUrl = apiBaseUrl + "?action=query&prop=revisions&rvprop=content&format
 // change this to use a different cache directory
 const cacheBaseDir = "./cache/"
 
+type TitlePath []string
+
+func (titlePath TitlePath) Head() string {
+	return titlePath[len(titlePath) - 1]
+}
+
+func (titlePath TitlePath) Catted(title string) TitlePath {
+	newTitlePath := make(TitlePath, len(titlePath), len(titlePath) + 1)
+	copy(newTitlePath, titlePath)
+	newTitlePath = append(newTitlePath, title)
+	return newTitlePath
+}
+
 type Page struct {
 	Title   string
 	Content string

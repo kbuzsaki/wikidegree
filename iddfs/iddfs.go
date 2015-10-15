@@ -27,16 +27,10 @@ import (
 	api "github.com/kbuzsaki/wikidegree/api"
 )
 
-// pseudo tuple containing the depth of this page in the explored tree
-type DepthTitle struct {
-	Depth int
-	Title string
-}
-
 const MaxDepth = 4
 
-func FindNearestPathSerial(start string, end string) []string {
-	for depthLimit := 1; depthLimit < MaxDepth; depthLimit++ {
+func FindNearestPathSerial(start string, end string) api.TitlePath {
+	for depthLimit := 1; depthLimit <= MaxDepth; depthLimit++ {
 		fmt.Println()
 		fmt.Println("Beginning search with depth limit", depthLimit)
 		path := depthLimitedSearchSerial(start, end, depthLimit)
@@ -48,30 +42,31 @@ func FindNearestPathSerial(start string, end string) []string {
 	return nil
 }
 
-func depthLimitedSearchSerial(start string, end string, depthLimit int) []string {
-	visited := make(map[string]string)
-	visited[start] = ""
+func depthLimitedSearchSerial(start string, end string, depthLimit int) api.TitlePath {
+	// technically this isn't needed anymore,
+	// since a depth limited search will handle cycles gracefully
+	visited := make(map[string]bool)
+	visited[start] = true
 
-	var depthTitle DepthTitle
-	titleStack := []DepthTitle{{0, start}}
+	var titlePath api.TitlePath
+	titlePathStack := []api.TitlePath{{start}}
 
-	for len(titleStack) > 0 {
-		depthTitle, titleStack = titleStack[len(titleStack)-1], titleStack[:len(titleStack)-1]
+	for len(titlePathStack) > 0 {
+		titlePath, titlePathStack = titlePathStack[len(titlePathStack)-1], titlePathStack[:len(titlePathStack)-1]
 
-		fmt.Println("Loading:", depthTitle)
-		page, _ := api.LoadPageContent(depthTitle.Title)
+		fmt.Println("Loading:", titlePath)
+		page, _ := api.LoadPageContent(titlePath.Head())
 		parsedPage := api.ParsePage(page)
 
 		for _, link := range parsedPage.Links {
+			newTitlePath := titlePath.Catted(link)
 			if link == end {
 				fmt.Println("Done!")
 				fmt.Println()
-				visited[link] = depthTitle.Title
-				return pathFromVisited(visited, start, end)
-			} else if depthTitle.Depth < depthLimit && len(visited[link]) == 0 {
-				visited[link] = depthTitle.Title
-				linkDepthTitle := DepthTitle{depthTitle.Depth + 1, link}
-				titleStack = append(titleStack, linkDepthTitle)
+				return newTitlePath
+			} else if len(newTitlePath) <= depthLimit && !visited[link] {
+				visited[link] = true
+				titlePathStack = append(titlePathStack, newTitlePath)
 			}
 		}
 	}
@@ -79,22 +74,3 @@ func depthLimitedSearchSerial(start string, end string, depthLimit int) []string
 	return nil
 }
 
-
-// this requires linear memory with respect to the number of pages visited...
-func pathFromVisited(visited map[string]string, start string, end string) []string {
-	// starts from the end of the graph and pops back
-	var path []string
-	parent := end
-	for parent != start {
-		path = append(path, parent)
-		parent = visited[parent]
-	}
-	path = append(path, start)
-
-	// reverse the path before returning
-	for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
-		path[i], path[j] = path[j], path[i]
-	}
-
-	return path
-}
