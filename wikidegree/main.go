@@ -14,6 +14,7 @@ import (
 )
 
 type parameters struct {
+	source string
 	algorithm string
 	start string
 	end string
@@ -25,7 +26,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	pageLoader := getPageLoader()
+	pageLoader := getPageLoader(params.source)
 	pathFinder := getPathFinder(params.algorithm, pageLoader)
 
 	// validate the start page
@@ -57,6 +58,7 @@ func main() {
 }
 
 func getParameters() (parameters, error) {
+	sourcePtr := flag.String("src", "bolt", "the source for page loading")
 	algorithmPtr := flag.String("alg", "bfs", "the path finding algorithm")
 	flag.Parse()
 
@@ -67,11 +69,23 @@ func getParameters() (parameters, error) {
 	start := api.EncodeTitle(args[0])
 	end := api.EncodeTitle(args[1])
 
-	return parameters{*algorithmPtr, start, end}, nil
+	return parameters{*sourcePtr, *algorithmPtr, start, end}, nil
 }
 
-func getPageLoader() api.PageLoader {
-	return api.GetWebPageLoader()
+func getPageLoader(source string) api.PageLoader {
+	switch source {
+	case "bolt":
+		pageLoader, err := api.GetBoltPageLoader()
+		if err != nil {
+			log.Fatal(err)
+		}
+		return pageLoader
+	case "web":
+		return api.GetWebPageLoader()
+	default:
+		log.Fatal("Unknown source:", source)
+		return nil
+	}
 }
 
 func getPathFinder(algorithm string, pageLoader api.PageLoader) api.PathFinder {
