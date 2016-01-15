@@ -28,6 +28,22 @@ func main() {
 	pageLoader := getPageLoader()
 	pathFinder := getPathFinder(params.algorithm, pageLoader)
 
+	// validate the start page
+	startPage, err := pageLoader.LoadPage(params.start)
+	if err != nil {
+		log.Fatal("Start page '" + params.start + "' does not exist!")
+	}
+	if len(startPage.Links) == 0 {
+		log.Fatal("Start page '" + params.start + "' has no links!")
+	}
+
+	// validate the end page
+	_, err = pageLoader.LoadPage(params.end)
+	if err != nil {
+		log.Fatal("End page '" + params.end + "' does not exist!")
+	}
+
+	// actually perform search
 	fmt.Println("Finding shortest path from", params.start, "to", params.end, "using", params.algorithm)
 	fmt.Println()
 
@@ -36,6 +52,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	fmt.Println()
 	fmt.Println("Final path:", path)
 }
 
@@ -47,8 +64,8 @@ func getParameters() (parameters, error) {
 		return parameters{}, fmt.Errorf("Expected exactly 2 arguments (start and end), found %d", flag.NArg())
 	}
 	args := flag.Args()
-	start := args[0]
-	end := args[1]
+	start := api.EncodeTitle(args[0])
+	end := api.EncodeTitle(args[1])
 
 	return parameters{*algorithmPtr, start, end}, nil
 }
