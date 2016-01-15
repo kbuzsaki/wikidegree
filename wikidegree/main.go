@@ -5,6 +5,7 @@ Maybe this will eventually turn into a decent command line interface.
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	bfs "github.com/kbuzsaki/wikidegree/bfs"
@@ -12,31 +13,59 @@ import (
 	api "github.com/kbuzsaki/wikidegree/api"
 )
 
+type parameters struct {
+	algorithm string
+	start string
+	end string
+}
 
 func main() {
-	algorithm := "bfs"
-
-	pageLoader := api.GetWebPageLoader()
-
-	var pathFinder api.PathFinder
-	switch algorithm {
-	case "bfs":
-		pathFinder = bfs.GetBfsPathFinder(pageLoader)
-	case "iddfs":
-		pathFinder = iddfs.GetIddfsPathFinder(pageLoader)
+	params, err := getParameters()
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	start := "hydrogen"
-	end := "hungary"
+	pageLoader := getPageLoader()
+	pathFinder := getPathFinder(params.algorithm, pageLoader)
 
-	fmt.Println("Finding shortest path from", start, "to", end, "using", algorithm)
+	fmt.Println("Finding shortest path from", params.start, "to", params.end, "using", params.algorithm)
 	fmt.Println()
 
-	path, err := pathFinder.FindPath(start, end)
+	path, err := pathFinder.FindPath(params.start, params.end)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Println("Final path:", path)
+}
+
+func getParameters() (parameters, error) {
+	algorithmPtr := flag.String("alg", "bfs", "the path finding algorithm")
+	flag.Parse()
+
+	if flag.NArg() != 2 {
+		return parameters{}, fmt.Errorf("Expected exactly 2 arguments (start and end), found %d", flag.NArg())
+	}
+	args := flag.Args()
+	start := args[0]
+	end := args[1]
+
+	return parameters{*algorithmPtr, start, end}, nil
+}
+
+func getPageLoader() api.PageLoader {
+	return api.GetWebPageLoader()
+}
+
+func getPathFinder(algorithm string, pageLoader api.PageLoader) api.PathFinder {
+	switch algorithm {
+	case "bfs":
+		return bfs.GetBfsPathFinder(pageLoader)
+	case "iddfs":
+		return iddfs.GetIddfsPathFinder(pageLoader)
+	default:
+		log.Fatal("Unknown path finding algorithm: ", algorithm)
+		return nil
+	}
 }
 
