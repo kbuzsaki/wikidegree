@@ -2,60 +2,95 @@ package main
 
 import (
 	"database/sql"
+	"encoding/xml"
 	"fmt"
 	"log"
+	"os"
+
 	"github.com/boltdb/bolt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/kbuzsaki/wikidegree/api"
-	"os"
-	"encoding/xml"
 )
 
-const xmlDumpFilename = "enwiki-20151201-pages-articles.xml"
+const xmlDumpFilename = "xml/enwiki-20151201-pages-articles.xml"
+
+const indexName = "db/index.db"
+const redirName = "db/redir.db"
+
+const commitThreshold = 10000
 
 func main() {
+	load()
+}
+
+func load() {
 	fmt.Println("Starting...")
 
 	pages := make(chan api.Page)
-	parsed := make(chan api.ParsedPage)
-	//go loadPagesFromMysql("kbuzsaki@/wiki", pages)
-	go loadPagesFromXml(xmlDumpFilename, pages)
-	go parsePages(pages, parsed)
+	redirects := make(chan Page)
 
-	db, err := bolt.Open("my.db", 0600, nil)
+	//go loadPagesFromMysql("kbuzsaki@/wiki", pages)
+	go loadPagesFromXml(xmlDumpFilename, pages, redirects)
+
+	index, err := bolt.Open(indexName, 0600, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
+	defer index.Close()
 
-	for page := range parsed {
-		db.Update(func(tx *bolt.Tx) error {
-			titleBytes := []byte(page.Title)
-			bucket, err := tx.CreateBucket(titleBytes)
-			if err != nil {
-				log.Fatal(err)
-			}
+	redir, err := bolt.Open(redirName, 0600, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer redir.Close()
 
-			for _, link := range page.Links {
-				linkBytes := []byte(link)
+	counter := 0
+	for {
+		select {
+		case page := <-pages:
+			index.Update(func(tx *bolt.Tx) error {
+				titleBytes := []byte(page.Title)
+				bucket, err := tx.CreateBucket(titleBytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				for _, link := range page.Links {
+					linkBytes := []byte(link)
+					bucket.Put(linkBytes, []byte{})
+				}
+				return nil
+			})
+		case redirect := <-redirects:
+			redir.Update(func(tx *bolt.Tx) error {
+				titleBytes := []byte(redirect.Title)
+				bucket, err := tx.CreateBucket(titleBytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				linkBytes := []byte(redirect.Redir.Title)
 				bucket.Put(linkBytes, []byte{})
-			}
-			return nil
-		})
+				return nil
+			})
+		}
+
+		counter++
+		fmt.Println(counter)
 	}
 }
 
 type Redirect struct {
-    Title string `xml:"title,attr"`
+	Title string `xml:"title,attr"`
 }
 
 type Page struct {
-    Title string `xml:"title"`
-    Redir Redirect `xml:"redirect"`
-    Text string `xml:"revision>text"`
+	Title string   `xml:"title"`
+	Redir Redirect `xml:"redirect"`
+	Text  string   `xml:"revision>text"`
 }
 
-func loadPagesFromXml(filename string, pages chan api.Page) {
+func loadPagesFromXml(filename string, pages chan api.Page, redirects chan Page) {
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
@@ -64,6 +99,7 @@ func loadPagesFromXml(filename string, pages chan api.Page) {
 
 	decoder := xml.NewDecoder(file)
 
+	var nilredir Redirect
 	for {
 		token, _ := decoder.Token()
 		if token == nil {
@@ -76,18 +112,14 @@ func loadPagesFromXml(filename string, pages chan api.Page) {
 				var page Page
 				decoder.DecodeElement(&page, &element)
 
-				page.Text = "[Text]"
-				fmt.Println(page)
-				var nilredir Redirect
-				fmt.Println(page.Redir == nilredir)
+				if page.Redir != nilredir {
+					redirects <- page
+				} else {
+					links := api.ParseLinks(page.Text)
+					pages <- api.Page{page.Title, links}
+				}
 			}
 		}
-	}
-}
-
-func parsePages(pages chan api.Page, parsed chan api.ParsedPage) {
-	for page := range pages {
-		parsed <- api.ParsePage(page)
 	}
 }
 
@@ -111,8 +143,8 @@ func loadPagesFromMysql(dataSource string, pages chan api.Page) {
 			log.Fatal(err)
 		}
 
-		page := api.Page{title, body}
+		links := api.ParseLinks(body)
+		page := api.Page{title, links}
 		pages <- page
 	}
 }
-
