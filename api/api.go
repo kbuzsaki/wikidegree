@@ -17,6 +17,25 @@ import (
 	"net/url"
 )
 
+
+// Represents a wiki page
+// Contains the page's unique title and the titles of all of the pages that it
+// links to.
+type Page struct {
+	Title string
+	Links []string
+}
+
+
+// Represents something that can load wiki pages
+// Takes the title of the page and returns the Page struct.
+type PageLoader interface {
+	LoadPage(title string) (Page, error)
+}
+
+
+// Represents a series of page titles/links that take you from one page
+// to another.
 type TitlePath []string
 
 func (titlePath TitlePath) Head() string {
@@ -30,21 +49,20 @@ func (titlePath TitlePath) Catted(title string) TitlePath {
 	return newTitlePath
 }
 
-type Page struct {
-	Title   string
-	Content string
+
+// Represents something that, given a PageLoader, can look up a path from one
+// page to another
+type PathFinder interface {
+	SetPageLoader(pageLoader PageLoader)
+	FindPath(start, end string) (TitlePath, error)
 }
 
-type ParsedPage struct {
-	Title string
-	Links []string
-}
 
-
-func ParsePage(page Page) ParsedPage {
+// Helper function that parses the links from a page's body text.
+func ParseLinks(content string) []string {
 	regex, _ := regexp.Compile("\\[\\[(.+?)(\\]\\]|\\||#)")
 
-	matches := regex.FindAllStringSubmatch(page.Content, -1)
+	matches := regex.FindAllStringSubmatch(content, -1)
 
 	var links []string
 	for _, match := range matches {
@@ -53,9 +71,11 @@ func ParsePage(page Page) ParsedPage {
 		links = append(links, link)
 	}
 
-	return ParsedPage{page.Title, links}
+	return links
 }
 
+
+// Helper function that formats and encodes a page title for web lookup
 func EncodeTitle(title string) string {
 	// the first character of the string is case insensitive,
 	// but all the rest is *sensitive*

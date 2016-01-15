@@ -27,11 +27,41 @@ import (
 	api "github.com/kbuzsaki/wikidegree/api"
 )
 
-const MaxWorkerThreads = 10
+const defaultMaxWorkerThreads = 10
+const defaultMaxDepth = 4
 
-const MaxDepth = 4
+func GetIddfsPathFinder(pageLoader api.PageLoader) api.PathFinder {
+	pathFinder := iddfsPathFinder{pageLoader, defaultMaxWorkerThreads, defaultMaxDepth, true}
+	return &pathFinder
+}
 
-func FindNearestPathParallel(start string, end string) api.TitlePath {
+// Implements api.PathFinder
+type iddfsPathFinder struct {
+	pageLoader api.PageLoader
+	maxWorkerThreads int
+	maxDepth int
+	serial bool
+}
+
+// Implements api.PathFinder.SetPageLoader()
+func (ipf* iddfsPathFinder) SetPageLoader(pageLoader api.PageLoader) {
+	ipf.pageLoader = pageLoader
+}
+
+// Implements api.PathFinder.FindPath()
+func (ipf* iddfsPathFinder) FindPath(start, end string) (api.TitlePath, error) {
+	var path api.TitlePath
+
+	if ipf.serial {
+		path = ipf.findNearestPathSerial(start, end)
+	} else {
+		path = ipf.findNearestPathParallel(start, end)
+	}
+
+	return path, nil
+}
+
+func (ipf *iddfsPathFinder) findNearestPathParallel(start string, end string) api.TitlePath {
 	// iterative deepening parallel currently doesn't work,
 	// the program will deadlock once there is nothing left to read
 	//
@@ -51,18 +81,18 @@ func FindNearestPathParallel(start string, end string) api.TitlePath {
 	*/
 
 	// just do a regular depth limited search instead
-	return depthLimitedSearchParallel(start, end, MaxDepth)
+	return ipf.depthLimitedSearchParallel(start, end, ipf.maxDepth)
 }
 
-func depthLimitedSearchParallel(start string, end string, depthLimit int) api.TitlePath {
+func (ipf *iddfsPathFinder) depthLimitedSearchParallel(start string, end string, depthLimit int) api.TitlePath {
 	requestQueue := make(chan chan<- api.TitlePath)
 	loadedQueue := make(chan api.TitlePath)
 	toLoadQueue := make(chan api.TitlePath)
 
 	go DfsQueue(toLoadQueue, requestQueue)
 
-	for i := 0; i < MaxWorkerThreads; i++ {
-		go requestQueueWorker(requestQueue, loadedQueue)
+	for i := 0; i < ipf.maxWorkerThreads; i++ {
+		go ipf.requestQueueWorker(requestQueue, loadedQueue)
 	}
 
 	toLoadQueue <- api.TitlePath{start}
@@ -78,7 +108,7 @@ func depthLimitedSearchParallel(start string, end string, depthLimit int) api.Ti
 	return nil
 }
 
-func requestQueueWorker(requestQueue chan<- chan<- api.TitlePath, output chan<- api.TitlePath) {
+func (ipf *iddfsPathFinder) requestQueueWorker(requestQueue chan<-chan<- api.TitlePath, output chan<- api.TitlePath) {
 	input := make(chan api.TitlePath)
 
 	for {
@@ -86,21 +116,20 @@ func requestQueueWorker(requestQueue chan<- chan<- api.TitlePath, output chan<- 
 		titlePath := <-input
 
 		fmt.Println("Loading:", titlePath)
-		page, _ := api.LoadPageContent(titlePath.Head())
-		parsedPage := api.ParsePage(page)
+		page, _ := ipf.pageLoader.LoadPage(titlePath.Head())
 
-		for _, link := range parsedPage.Links {
+		for _, link := range page.Links {
 			newTitlePath := titlePath.Catted(link)
 			output <- newTitlePath
 		}
 	}
 }
 
-func FindNearestPathSerial(start string, end string) api.TitlePath {
-	for depthLimit := 1; depthLimit <= MaxDepth; depthLimit++ {
+func (ipf *iddfsPathFinder) findNearestPathSerial(start string, end string) api.TitlePath {
+	for depthLimit := 1; depthLimit <= ipf.maxDepth; depthLimit++ {
 		fmt.Println()
 		fmt.Println("Beginning search with depth limit", depthLimit)
-		path := depthLimitedSearchSerial(start, end, depthLimit)
+		path := ipf.depthLimitedSearchSerial(start, end, depthLimit)
 
 		if path != nil {
 			return path
@@ -109,7 +138,7 @@ func FindNearestPathSerial(start string, end string) api.TitlePath {
 	return nil
 }
 
-func depthLimitedSearchSerial(start string, end string, depthLimit int) api.TitlePath {
+func (ipf *iddfsPathFinder) depthLimitedSearchSerial(start string, end string, depthLimit int) api.TitlePath {
 	// technically this isn't needed anymore,
 	// since a depth limited search will handle cycles gracefully
 	visited := make(map[string]bool)
@@ -122,10 +151,9 @@ func depthLimitedSearchSerial(start string, end string, depthLimit int) api.Titl
 		titlePath, titlePathStack = titlePathStack[len(titlePathStack)-1], titlePathStack[:len(titlePathStack)-1]
 
 		fmt.Println("Loading:", titlePath)
-		page, _ := api.LoadPageContent(titlePath.Head())
-		parsedPage := api.ParsePage(page)
+		page, _ := ipf.pageLoader.LoadPage(titlePath.Head())
 
-		for _, link := range parsedPage.Links {
+		for _, link := range page.Links {
 			newTitlePath := titlePath.Catted(link)
 			if link == end {
 				fmt.Println("Done!")

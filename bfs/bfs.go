@@ -31,32 +31,63 @@ import (
 	api "github.com/kbuzsaki/wikidegree/api"
 )
 
-const frontierSize = 10 * 1000 * 1000
-const numScraperThreads = 10
+const defaultFrontierSize = 10 * 1000 * 1000
+const defaultNumScraperThreads = 10
 
-func FindNearestPathParallel(start string, end string) api.TitlePath {
-	titles := make(chan string, frontierSize)
-	pages := make(chan api.Page, 10)
-	parsedPages := make(chan api.ParsedPage, 10)
+func GetBfsPathFinder(pageLoader api.PageLoader) api.PathFinder {
+	pathFinder := bfsPathFinder{pageLoader, defaultFrontierSize, defaultNumScraperThreads, false}
+	return &pathFinder
+}
 
-	for i := 0; i < numScraperThreads; i++ {
-		go loadPages(titles, pages)
+// Implements api.PathFinder
+type bfsPathFinder struct {
+	pageLoader api.PageLoader
+	frontierSize int
+	numScraperThreads int
+	serial bool
+}
+
+// Implements api.PathFinder.SetPageLoader()
+func (bpf* bfsPathFinder) SetPageLoader(pageLoader api.PageLoader) {
+	bpf.pageLoader = pageLoader
+}
+
+// Implements api.PathFinder.FindPath()
+func (bpf* bfsPathFinder) FindPath(start, end string) (api.TitlePath, error) {
+	var path api.TitlePath
+
+	if bpf.serial {
+		path = bpf.findNearestPathSerial(start, end)
+	} else {
+		path = bpf.findNearestPathParallel(start, end)
 	}
-	go parsePages(pages, parsedPages)
+
+	return path, nil
+}
+
+
+// parallel implementation of bfs
+func (bpf* bfsPathFinder) findNearestPathParallel(start, end string) api.TitlePath {
+	titles := make(chan string, bpf.frontierSize)
+	pages := make(chan api.Page)
+
+	for i := 0; i < bpf.numScraperThreads; i++ {
+		go bpf.loadPages(titles, pages)
+	}
 
 	titles <- start
 	visited := make(map[string]string)
 	visited[start] = ""
 
-	for parsedPage := range parsedPages {
-		for _, link := range parsedPage.Links {
+	for page := range pages {
+		for _, link := range page.Links {
 			if link == end {
 				fmt.Println("Done!")
 				fmt.Println()
-				visited[link] = parsedPage.Title
+				visited[link] = page.Title
 				return pathFromVisited(visited, start, end)
 			} else if len(visited[link]) == 0 {
-				visited[link] = parsedPage.Title
+				visited[link] = page.Title
 				titles <- link
 			}
 		}
@@ -65,10 +96,11 @@ func FindNearestPathParallel(start string, end string) api.TitlePath {
 	return nil
 }
 
-func loadPages(titles <-chan string, pages chan<- api.Page) {
+// simple function for loading pages from the loader
+func (bpf* bfsPathFinder) loadPages(titles <-chan string, pages chan<- api.Page) {
 	for title := range titles {
 		fmt.Println("Loading:", title)
-		if page, err := api.LoadPageContent(title); err == nil {
+		if page, err := bpf.pageLoader.LoadPage(title); err == nil {
 			pages <- page
 		} else {
 			fmt.Println("Failed to load: ", title)
@@ -76,13 +108,8 @@ func loadPages(titles <-chan string, pages chan<- api.Page) {
 	}
 }
 
-func parsePages(pages <-chan api.Page, parsedPages chan<- api.ParsedPage) {
-	for page := range pages {
-		parsedPages <- api.ParsePage(page)
-	}
-}
 
-
+// queue for use by serial bfs
 type TitlePathQueue []api.TitlePath
 
 func (pathQueue *TitlePathQueue) Push(titlePath api.TitlePath) {
@@ -95,7 +122,8 @@ func (pathQueue *TitlePathQueue) Pop() api.TitlePath {
 	return titlePath
 }
 
-func FindNearestPathSerial(start string, end string) api.TitlePath {
+// serial implementation of bfs
+func (bpf *bfsPathFinder) findNearestPathSerial(start string, end string) api.TitlePath {
 	visited := make(map[string]bool)
 	visited[start] = true
 	frontier := TitlePathQueue{{start}}
@@ -104,10 +132,8 @@ func FindNearestPathSerial(start string, end string) api.TitlePath {
 		titlePath := frontier.Pop()
 
 		fmt.Println("Loading:", titlePath)
-		if page, err := api.LoadPageContent(titlePath.Head()); err == nil {
-			parsedPage := api.ParsePage(page)
-
-			for _, title := range parsedPage.Links {
+		if page, err := bpf.pageLoader.LoadPage(titlePath.Head()); err == nil {
+			for _, title := range page.Links {
 				newTitlePath := titlePath.Catted(title)
 
 				if title == end {

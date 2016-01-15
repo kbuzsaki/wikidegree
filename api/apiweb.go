@@ -2,37 +2,49 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 )
 
 const apiBaseUrl = "https://en.wikipedia.org/w/api.php"
-const pageUrl = apiBaseUrl + "?action=query&prop=revisions&rvprop=content&format=json&titles="
+const defaultPageUrl = apiBaseUrl + "?action=query&prop=revisions&rvprop=content&format=json&titles="
 
-func LoadPageContent(title string) (page Page, err error) {
-	var body []byte
-	body, err = loadPageContentFromApi(title)
+type webLoader struct {
+	pageUrl string
+}
+
+func GetWebPageLoader() PageLoader {
+	return webLoader{defaultPageUrl}
+}
+
+func (wl webLoader) LoadPage(title string) (Page, error) {
+	body, err := wl.loadPageContentFromApi(title)
 	if err != nil {
-		return
+		return Page{}, err
 	}
 
 	var query jsonPageQuery
 	err = json.Unmarshal(body, &query)
 	if err != nil {
-		return
+		return Page{}, err
 	}
 
 	for _, jsonPage := range query.Query.Pages {
 		for _, revision := range jsonPage.Revisions {
-			page = Page{title, revision["*"]}
-			return
+			content := revision["*"]
+			links := ParseLinks(content)
+			page := Page{title, links}
+			return page, nil
 		}
 	}
-	return
+
+	return Page{}, errors.New(fmt.Sprint("No revisions found for", title))
 }
 
-func loadPageContentFromApi(title string) (body []byte, err error) {
-	url := pageUrl + title
+func (wl webLoader) loadPageContentFromApi(title string) (body []byte, err error) {
+	url := wl.pageUrl + title
 	response, err := http.Get(url)
 	if err != nil {
 		return
