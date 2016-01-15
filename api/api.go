@@ -31,6 +31,7 @@ type Page struct {
 // Takes the title of the page and returns the Page struct.
 type PageLoader interface {
 	LoadPage(title string) (Page, error)
+	Close()
 }
 
 

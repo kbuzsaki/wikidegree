@@ -27,6 +27,8 @@ func main() {
 	}
 
 	pageLoader := getPageLoader(params.source)
+	defer pageLoader.Close()
+
 	pathFinder := getPathFinder(params.algorithm, pageLoader)
 
 	// validate the start page
