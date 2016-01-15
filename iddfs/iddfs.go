@@ -61,6 +61,7 @@ func (ipf* iddfsPathFinder) FindPath(start, end string) (api.TitlePath, error) {
 	return path, nil
 }
 
+
 func (ipf *iddfsPathFinder) findNearestPathParallel(start string, end string) api.TitlePath {
 	// iterative deepening parallel currently doesn't work,
 	// the program will deadlock once there is nothing left to read
