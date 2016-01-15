@@ -12,21 +12,10 @@ links to a particular page.
 package api
 
 import (
-	"encoding/json"
-	"errors"
-	"io/ioutil"
-	"net/http"
 	"regexp"
 	"strings"
+	"net/url"
 )
-
-const loadFrom = "api"
-
-const apiBaseUrl = "https://en.wikipedia.org/w/api.php"
-const pageUrl = apiBaseUrl + "?action=query&prop=revisions&rvprop=content&format=json&titles="
-
-// change this to use a different cache directory
-const cacheBaseDir = "./cache/"
 
 type TitlePath []string
 
@@ -51,52 +40,6 @@ type ParsedPage struct {
 	Links []string
 }
 
-func LoadPageContent(title string) (page Page, err error) {
-	var body []byte
-
-	if loadFrom == "api" {
-		body, err = loadPageContentFromApi(title)
-	} else if loadFrom == "filesystem" {
-		body, err = loadPageContentFromFilesystem(title)
-	} else {
-		err = errors.New("unrecognized loadFrom: " + loadFrom)
-	}
-
-	if err != nil {
-		return
-	}
-
-	var query jsonPageQuery
-	err = json.Unmarshal(body, &query)
-	if err != nil {
-		return
-	}
-
-	for _, jsonPage := range query.Query.Pages {
-		for _, revision := range jsonPage.Revisions {
-			page = Page{title, revision["*"]}
-			return
-		}
-	}
-	return
-}
-
-func loadPageContentFromApi(title string) (body []byte, err error) {
-	url := pageUrl + title
-	response, err := http.Get(url)
-	if err != nil {
-		return
-	}
-
-	body, err = ioutil.ReadAll(response.Body)
-	return
-}
-
-func loadPageContentFromFilesystem(title string) (body []byte, err error) {
-	filename := cacheBaseDir + title
-	body, err = ioutil.ReadFile(filename)
-	return
-}
 
 func ParsePage(page Page) ParsedPage {
 	regex, _ := regexp.Compile("\\[\\[(.+?)(\\]\\]|\\||#)")
@@ -106,27 +49,19 @@ func ParsePage(page Page) ParsedPage {
 	var links []string
 	for _, match := range matches {
 		link := match[1]
-		link = encodeTitle(link)
+		link = EncodeTitle(link)
 		links = append(links, link)
 	}
 
 	return ParsedPage{page.Title, links}
 }
 
-func encodeTitle(title string) string {
+func EncodeTitle(title string) string {
+	// the first character of the string is case insensitive,
+	// but all the rest is *sensitive*
+	title = strings.ToUpper(title[0:1]) + title[1:]
 	title = strings.Replace(title, " ", "_", -1)
-	title = strings.ToLower(title)
+	title = url.QueryEscape(title)
 	return title
 }
 
-type jsonPage struct {
-	Pageid    int
-	Title     string
-	Revisions []map[string]string
-}
-
-type jsonPageQuery struct {
-	Query struct {
-		Pages map[string]jsonPage
-	}
-}
