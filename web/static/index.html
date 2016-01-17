@@ -14,12 +14,12 @@
                     <div class="form-group">
                         <label for="start-link">Start Link</label>
                         <input type="text" id="start-link" class="form-control"
-                               placeholder="e.g. 'Bubble_gum' or 'https://en.wikipedia.org/wiki/Bubble_gum'" />
+                               placeholder="e.g. 'bubble gum' or 'https://en.wikipedia.org/wiki/Bubble_gum'" />
                     </div>
                     <div class="form-group">
                         <label for="start-link">End Link</label>
                         <input type="text" id="end-link" class="form-control"
-                               placeholder="e.g. 'Adolf_Hitler' or 'https://en.wikipedia.org/wiki/Adolf_Hitler'" />
+                               placeholder="e.g. 'hitler' or 'https://en.wikipedia.org/wiki/Adolf_Hitler'" />
                     </div>
                     <div class="row">
                         <div class="col-sm-4 col-xs-2">
@@ -57,8 +57,8 @@
                 $("#submit").on("click", function(e) {
                     e.preventDefault();
 
-                    var start = $("#start-link").val();
-                    var end = $("#end-link").val();
+                    var start = parseTitle($("#start-link").val());
+                    var end   = parseTitle($("#end-link").val());
 
                     $("#results-panel").hide();
                     $("#error-panel").hide();
@@ -90,6 +90,37 @@
 
                 });
             });
+
+            function parseTitle(input) {
+                var wikiPrefix = "en.wikipedia.org/wiki/";
+                var wikiIndex = input.indexOf(wikiPrefix);
+
+                // if it's a link
+                if (wikiIndex > -1) {
+                    // get rid of the first part of the link
+                    input = input.substring(wikiIndex + wikiPrefix.length);
+
+                    // get rid of the hash if there is one
+                    var hashIndex = input.indexOf("#");
+                    if (hashIndex > -1) {
+                        input = input.substring(0, hashIndex);
+                    }
+
+                    return input;
+                }
+
+                // replace spaces with underscores
+                if (input.indexOf(" ") > -1) {
+                    input = input.replace(new RegExp(" ", 'g'), "_");
+                }
+
+                // if it's equal to its decoded self, then it's not *encoded*, so try encoding it
+                if (input === decodeURIComponent(input)) {
+                    input = encodeURIComponent(input);
+                }
+
+                return input;
+            }
 
             // lol
             var STEPS = [
