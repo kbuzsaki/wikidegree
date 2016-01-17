@@ -35,7 +35,10 @@ func (wl webLoader) LoadPage(title string) (Page, error) {
 		for _, revision := range jsonPage.Revisions {
 			content := revision["*"]
 			links := ParseLinks(content)
-			page := Page{title, links}
+
+			// TODO: actually implement redirect support in the web loader
+			redirector := title
+			page := Page{redirector, title, links}
 			return page, nil
 		}
 	}

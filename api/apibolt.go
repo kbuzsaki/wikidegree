@@ -51,6 +51,9 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 		return Page{}, errors.New("Connection closed")
 	}
 
+	// preserve the original link even if there's a redirect
+	redirector := title
+
 	titleBytes := []byte(title)
 
 	// check if the title redirects
@@ -98,5 +101,5 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 		links = append(links, string(bytesLink))
 	}
 
-	return Page{string(titleBytes), links}, nil
+	return Page{redirector, string(titleBytes), links}, nil
 }

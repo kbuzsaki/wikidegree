@@ -22,8 +22,9 @@ import (
 // Contains the page's unique title and the titles of all of the pages that it
 // links to.
 type Page struct {
-	Title string
-	Links []string
+	Redirector string // the original link used to get to the page, usually but not always the same as title
+	Title string      // the actual title of the page
+	Links []string    // the links on the page
 }
 
 

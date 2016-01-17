@@ -116,7 +116,7 @@ func loadPagesFromXml(filename string, pages chan api.Page, redirects chan Page)
 					redirects <- page
 				} else {
 					links := api.ParseLinks(page.Text)
-					pages <- api.Page{page.Title, links}
+					pages <- api.Page{page.Title, page.Title, links}
 				}
 			}
 		}
@@ -144,7 +144,7 @@ func loadPagesFromMysql(dataSource string, pages chan api.Page) {
 		}
 
 		links := api.ParseLinks(body)
-		page := api.Page{title, links}
+		page := api.Page{title, title, links}
 		pages <- page
 	}
 }

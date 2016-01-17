@@ -20,6 +20,10 @@ func (bpf* bfsPathFinder) findNearestPathParallel(start, end string) (api.TitleP
 	visited[start] = ""
 
 	for page := range pages {
+		if page.Redirector != page.Title && len(visited[page.Title]) == 0 {
+			visited[page.Title] = visited[page.Redirector]
+		}
+
 		for _, link := range page.Links {
 			if link == end {
 				// close the channels to halt other goroutines
