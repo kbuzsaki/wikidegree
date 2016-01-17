@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"time"
 	"net/http"
 	bfs "github.com/kbuzsaki/wikidegree/bfs"
 	api "github.com/kbuzsaki/wikidegree/api"
@@ -15,7 +16,7 @@ func lookup(writer http.ResponseWriter, request *http.Request) {
 	start := values.Get("start")
 	end := values.Get("end")
 
-	path, err := lookupPath(start, end)
+	path, err := lookupPathWithTimeout(start, end)
 	if err != nil {
 		log.Print(err)
 		io.WriteString(writer, "Error: " + err.Error())
@@ -23,6 +24,31 @@ func lookup(writer http.ResponseWriter, request *http.Request) {
 		pathBytes, _ := json.Marshal(&path)
 		io.WriteString(writer, string(pathBytes))
 	}
+}
+
+func lookupPathWithTimeout(start, end string) (api.TitlePath, error) {
+	resultChan := make(chan api.TitlePath)
+	errorChan := make(chan error)
+
+	go func() {
+		result, err := lookupPath(start, end)
+		if err != nil {
+			errorChan <- err
+		}
+		resultChan <- result
+	}()
+
+	timeout := time.After(10 * time.Second)
+	select {
+		case result := <-resultChan:
+			return result, nil
+		case err := <-errorChan:
+			return nil, err
+		case <-timeout:
+			return nil, errors.New("timed out after 10 seconds")
+	}
+
+	return nil, nil
 }
 
 func lookupPath(start, end string) (api.TitlePath, error) {
