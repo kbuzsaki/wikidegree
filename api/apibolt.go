@@ -3,6 +3,8 @@ package api
 import (
 	"errors"
 	"github.com/boltdb/bolt"
+	"log"
+	"sync"
 )
 
 const defaultIndexName = "db/index.db"
@@ -11,6 +13,8 @@ const defaultRedirName = "db/redir.db"
 type boltLoader struct {
 	index *bolt.DB
 	redir *bolt.DB
+	wg sync.WaitGroup
+	closing bool
 }
 
 func GetBoltPageLoader() (PageLoader, error) {
@@ -24,16 +28,29 @@ func GetBoltPageLoader() (PageLoader, error) {
 		return nil, err
 	}
 
-	pageLoader := boltLoader{index, redir}
+	pageLoader := boltLoader{index, redir, sync.WaitGroup{}, false}
 	return &pageLoader, nil
 }
 
 func (bl *boltLoader) Close() {
+	// wait until everyone is done before closing bolt
+	// this is kinda hacky and likely not the right way to do things...
+	bl.closing = true
+	bl.wg.Wait()
+
 	bl.index.Close()
 	bl.redir.Close()
 }
 
 func (bl *boltLoader) LoadPage(title string) (Page, error) {
+	// make sure the connections don't close until we're done
+	bl.wg.Add(1)
+	defer bl.wg.Done()
+
+	if bl.closing {
+		return Page{}, errors.New("Connection closed")
+	}
+
 	titleBytes := []byte(title)
 
 	// check if the title redirects
@@ -46,6 +63,7 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 
 		bucket.ForEach(func(key, value []byte) error {
 			// if we find a redirect, switch to that instead
+			log.Println("Redirecting", title, "to", string(key))
 			titleBytes = key
 			return nil
 		})
