@@ -22,6 +22,9 @@ func (bpf* bfsPathFinder) findNearestPathParallel(start, end string) (api.TitleP
 	for page := range pages {
 		for _, link := range page.Links {
 			if link == end {
+				// close the channels to halt other goroutines
+				close(titles)
+
 				log.Println("Found end page:", end, "stopping...")
 				visited[link] = page.Title
 				return pathFromVisited(visited, start, end), nil
