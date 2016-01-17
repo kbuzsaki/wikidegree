@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	bfs "github.com/kbuzsaki/wikidegree/bfs"
 	iddfs "github.com/kbuzsaki/wikidegree/iddfs"
 	api "github.com/kbuzsaki/wikidegree/api"
@@ -18,12 +19,22 @@ type parameters struct {
 	algorithm string
 	start string
 	end string
+	verbose bool
 }
 
 func main() {
 	params, err := getParameters()
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	// if the user didn't specify verbose, send all log output to dev null
+	if !params.verbose {
+		devNull, err := os.Open(os.DevNull)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.SetOutput(devNull)
 	}
 
 	pageLoader := getPageLoader(params.source)
@@ -48,20 +59,19 @@ func main() {
 
 	// actually perform search
 	fmt.Println("Finding shortest path from", params.start, "to", params.end, "using", params.algorithm)
-	fmt.Println()
 
 	path, err := pathFinder.FindPath(params.start, params.end)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println()
 	fmt.Println("Final path:", path)
 }
 
 func getParameters() (parameters, error) {
 	sourcePtr := flag.String("src", "bolt", "the source for page loading")
 	algorithmPtr := flag.String("alg", "bfs", "the path finding algorithm")
+	verbosePtr := flag.Bool("v", false, "enable verbose output")
 	flag.Parse()
 
 	if flag.NArg() != 2 {
@@ -71,7 +81,7 @@ func getParameters() (parameters, error) {
 	start := api.EncodeTitle(args[0])
 	end := api.EncodeTitle(args[1])
 
-	return parameters{*sourcePtr, *algorithmPtr, start, end}, nil
+	return parameters{*sourcePtr, *algorithmPtr, start, end, *verbosePtr}, nil
 }
 
 func getPageLoader(source string) api.PageLoader {
