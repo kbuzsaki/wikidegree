@@ -19,7 +19,9 @@ func lookup(writer http.ResponseWriter, request *http.Request) {
 	path, err := lookupPathWithTimeout(start, end)
 	if err != nil {
 		log.Print(err)
-		io.WriteString(writer, "Error: " + err.Error())
+		errorJson := map[string]string{"error": err.Error()}
+		errorBytes, _ := json.Marshal(&errorJson)
+		io.WriteString(writer, string(errorBytes))
 	} else {
 		pathBytes, _ := json.Marshal(&path)
 		io.WriteString(writer, string(pathBytes))
