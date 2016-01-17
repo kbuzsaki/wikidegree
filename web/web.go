@@ -43,10 +43,13 @@ func lookupPathWithTimeout(start, end string) (api.TitlePath, error) {
 	timeout := time.After(10 * time.Second)
 	select {
 		case result := <-resultChan:
+			log.Println("Got result:", result)
 			return result, nil
 		case err := <-errorChan:
+			log.Println("Got error:", err)
 			return nil, err
 		case <-timeout:
+			log.Println("timed out :(")
 			return nil, errors.New("timed out after 10 seconds")
 	}
 
@@ -95,6 +98,7 @@ func lookupPath(start, end string) (api.TitlePath, error) {
 }
 
 func main() {
-	http.HandleFunc("/", lookup)
+	http.Handle("/", http.FileServer(http.Dir("./static")))
+	http.HandleFunc("/api/lookup", lookup)
 	http.ListenAndServe(":8000", nil)
 }
