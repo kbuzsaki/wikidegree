@@ -1,7 +1,7 @@
 package api
 
 import (
-	"fmt"
+	"errors"
 	"github.com/boltdb/bolt"
 )
 
@@ -61,7 +61,7 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 		bucket := tx.Bucket(titleBytes)
 		// no links for this page?
         if bucket == nil {
-			return fmt.Errorf("No entry for title '%s'", string(titleBytes))
+			return errors.New("No entry for title '" + string(titleBytes) + "'")
 		}
 
 		bucket.ForEach(func(key, value []byte) error {
