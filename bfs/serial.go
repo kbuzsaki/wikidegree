@@ -1,6 +1,7 @@
 package bfs
 
 import (
+	"errors"
 	"fmt"
 	api "github.com/kbuzsaki/wikidegree/api"
 )
@@ -19,7 +20,7 @@ func (pathQueue *TitlePathQueue) Pop() api.TitlePath {
 }
 
 // serial implementation of bfs
-func (bpf *bfsPathFinder) findNearestPathSerial(start string, end string) api.TitlePath {
+func (bpf *bfsPathFinder) findNearestPathSerial(start string, end string) (api.TitlePath, error) {
 	visited := make(map[string]bool)
 	visited[start] = true
 	frontier := TitlePathQueue{{start}}
@@ -33,7 +34,7 @@ func (bpf *bfsPathFinder) findNearestPathSerial(start string, end string) api.Ti
 				newTitlePath := titlePath.Catted(title)
 
 				if title == end {
-					return newTitlePath
+					return newTitlePath, nil
 				} else if !visited[title] {
 					visited[title] = true
 					frontier.Push(newTitlePath)
@@ -44,5 +45,5 @@ func (bpf *bfsPathFinder) findNearestPathSerial(start string, end string) api.Ti
 		}
 	}
 
-	return nil
+	return nil, errors.New("Ran out of links!")
 }

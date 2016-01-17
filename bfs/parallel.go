@@ -1,12 +1,13 @@
 package bfs
 
 import (
+	"errors"
 	"fmt"
 	api "github.com/kbuzsaki/wikidegree/api"
 )
 
 // parallel implementation of bfs
-func (bpf* bfsPathFinder) findNearestPathParallel(start, end string) api.TitlePath {
+func (bpf* bfsPathFinder) findNearestPathParallel(start, end string) (api.TitlePath, error) {
 	titles := make(chan string, bpf.frontierSize)
 	pages := make(chan api.Page)
 
@@ -24,7 +25,7 @@ func (bpf* bfsPathFinder) findNearestPathParallel(start, end string) api.TitlePa
 				fmt.Println("Done!")
 				fmt.Println()
 				visited[link] = page.Title
-				return pathFromVisited(visited, start, end)
+				return pathFromVisited(visited, start, end), nil
 			} else if len(visited[link]) == 0 {
 				visited[link] = page.Title
 				titles <- link
@@ -32,7 +33,7 @@ func (bpf* bfsPathFinder) findNearestPathParallel(start, end string) api.TitlePa
 		}
 	}
 
-	return nil
+	return nil, errors.New("Ran out of links!")
 }
 
 // simple function for loading pages from the loader

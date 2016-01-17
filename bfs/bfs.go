@@ -53,14 +53,10 @@ func (bpf* bfsPathFinder) SetPageLoader(pageLoader api.PageLoader) {
 
 // Implements api.PathFinder.FindPath()
 func (bpf* bfsPathFinder) FindPath(start, end string) (api.TitlePath, error) {
-	var path api.TitlePath
-
 	if bpf.serial {
-		path = bpf.findNearestPathSerial(start, end)
+		return bpf.findNearestPathSerial(start, end)
 	} else {
-		path = bpf.findNearestPathParallel(start, end)
+		return bpf.findNearestPathParallel(start, end)
 	}
-
-	return path, nil
 }
 
