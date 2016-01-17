@@ -64,7 +64,7 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 		bucket.ForEach(func(key, value []byte) error {
 			// if we find a redirect, switch to that instead
 			log.Println("Redirecting", title, "to", string(key))
-			titleBytes = key
+			titleBytes = []byte(EncodeTitle(string(key)))
 			return nil
 		})
 		return nil
@@ -98,5 +98,5 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 		links = append(links, string(bytesLink))
 	}
 
-	return Page{title, links}, nil
+	return Page{string(titleBytes), links}, nil
 }

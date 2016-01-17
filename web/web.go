@@ -50,10 +50,16 @@ func lookupPath(start, end string) (api.TitlePath, error) {
 	}
 
 	// validate that the end page exists
-	_, err = pageLoader.LoadPage(end)
+	endPage, err := pageLoader.LoadPage(end)
 	if err != nil {
 		return nil, err
 	}
+
+	// use the page titles instead of the user input in case there were redirects
+	start = api.EncodeTitle(startPage.Title)
+	end = api.EncodeTitle(endPage.Title)
+
+	log.Println("Finding path from '" + start + "' to '" + end + "'")
 
 	// actually find the path using bfs
 	pathFinder := bfs.GetBfsPathFinder(pageLoader)
