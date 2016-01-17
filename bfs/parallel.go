@@ -2,7 +2,7 @@ package bfs
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	api "github.com/kbuzsaki/wikidegree/api"
 )
 
@@ -22,8 +22,7 @@ func (bpf* bfsPathFinder) findNearestPathParallel(start, end string) (api.TitleP
 	for page := range pages {
 		for _, link := range page.Links {
 			if link == end {
-				fmt.Println("Done!")
-				fmt.Println()
+				log.Println("Found end page:", end, "stopping...")
 				visited[link] = page.Title
 				return pathFromVisited(visited, start, end), nil
 			} else if len(visited[link]) == 0 {
@@ -39,11 +38,11 @@ func (bpf* bfsPathFinder) findNearestPathParallel(start, end string) (api.TitleP
 // simple function for loading pages from the loader
 func (bpf* bfsPathFinder) loadPages(titles <-chan string, pages chan<- api.Page) {
 	for title := range titles {
-		fmt.Println("Loading:", title)
+		log.Println("Loading page:", title)
 		if page, err := bpf.pageLoader.LoadPage(title); err == nil {
 			pages <- page
 		} else {
-			fmt.Println("Failed to load: ", title)
+			log.Println("Error loading page:", title, "error:", err)
 		}
 	}
 }

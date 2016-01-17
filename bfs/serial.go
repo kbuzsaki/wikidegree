@@ -2,7 +2,7 @@ package bfs
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	api "github.com/kbuzsaki/wikidegree/api"
 )
 
@@ -28,7 +28,7 @@ func (bpf *bfsPathFinder) findNearestPathSerial(start string, end string) (api.T
 	for len(frontier) > 0 {
 		titlePath := frontier.Pop()
 
-		fmt.Println("Loading:", titlePath)
+		log.Println("Loading page:", titlePath)
 		if page, err := bpf.pageLoader.LoadPage(titlePath.Head()); err == nil {
 			for _, title := range page.Links {
 				newTitlePath := titlePath.Catted(title)
@@ -41,7 +41,7 @@ func (bpf *bfsPathFinder) findNearestPathSerial(start string, end string) (api.T
 				}
 			}
 		} else {
-			fmt.Println("Failed to load: ", titlePath.Head())
+			log.Println("Error loading page:", titlePath.Head(), "error:", err)
 		}
 	}
 
