@@ -16,9 +16,12 @@ func lookup(writer http.ResponseWriter, request *http.Request) {
 	start := values.Get("start")
 	end := values.Get("end")
 
+	startTime := time.Now()
 	path, err := lookupPathWithTimeout(start, end)
+	duration := time.Since(startTime)
 
 	result := make(map[string]interface{})
+	result["time"] = duration.String()
 	if err != nil {
 		log.Print(err)
 		result["error"] = err.Error()

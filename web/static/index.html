@@ -79,6 +79,7 @@
                             else {
                                 $("#results-panel").show();
                                 $("#results-panel .panel-body").html(formatResult(result.path));
+                                $("#results-panel .panel-body").append("<hr><div class=\"small\">Took " + result.time + "</div>");
                             }
                         },
                         error: function(e) {
