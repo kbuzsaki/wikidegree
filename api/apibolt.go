@@ -24,12 +24,12 @@ type boltLoader struct {
 }
 
 func GetBoltPageLoader() (PageLoader, error) {
-	index, err := bolt.Open(defaultIndexName, 0600, nil)
+	index, err := bolt.Open(defaultIndexName, 0600, &bolt.Options{ReadOnly: true})
 	if err != nil {
 		return nil, err
 	}
 
-	redir, err := bolt.Open(defaultRedirName, 0600, nil)
+	redir, err := bolt.Open(defaultRedirName, 0600, &bolt.Options{ReadOnly: true})
 	if err != nil {
 		return nil, err
 	}
