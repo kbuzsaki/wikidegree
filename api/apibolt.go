@@ -10,9 +10,15 @@ const defaultIndexName = "db/index.db"
 const defaultRedirName = "db/redir.db"
 
 type boltLoader struct {
+	// connection to db of {title -> links} mappings
 	index *bolt.DB
+	// connection to db of {title -> redirect} mappings
 	redir *bolt.DB
+
+	// waitgroup to keep track of whether the connections are in use
 	wg sync.WaitGroup
+
+	// atomic boolean to block new loads from starting when a close is requested
 	closing bool
 	closeLock sync.Mutex
 }
@@ -32,6 +38,8 @@ func GetBoltPageLoader() (PageLoader, error) {
 	return &pageLoader, nil
 }
 
+// Blocks new loads from starting, waits for existing loads to complete,
+// and then shuts down the db connections
 func (bl *boltLoader) Close() {
 	// set the closing flag so that no new loads are started
 	bl.setClosing()
