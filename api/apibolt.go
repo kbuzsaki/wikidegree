@@ -60,34 +60,12 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 		return Page{}, err
 	}
 
-	titleBytes := []byte(title)
-
-	// load up the links
-	var bytesLinks [][]byte
-	err = bl.index.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(titleBytes)
-		// no links for this page?
-        if bucket == nil {
-			return errors.New("No entry for title '" + string(titleBytes) + "'")
-		}
-
-		bucket.ForEach(func(key, value []byte) error {
-			bytesLinks = append(bytesLinks, key)
-			return nil
-		})
-		return nil
-	})
+	links, err := bl.lookupLinks(title)
 	if err != nil {
 		return Page{}, err
 	}
 
-	// convert the links to strings
-	var links []string
-	for _, bytesLink := range bytesLinks {
-		links = append(links, string(bytesLink))
-	}
-
-	return Page{redirector, string(titleBytes), links}, nil
+	return Page{redirector, title, links}, nil
 }
 
 // Checks if the given title redirects to a different page.
@@ -113,4 +91,37 @@ func (bl *boltLoader) lookupRedirect(title string) (string, error) {
 	})
 
 	return string(titleBytes), err
+}
+
+func (bl *boltLoader) lookupLinks(title string) ([]string, error) {
+	titleBytes := []byte(title)
+
+	// load up the links
+	var bytesLinks [][]byte
+	err := bl.index.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(titleBytes)
+
+		// no links for this page?
+		if bucket == nil {
+			return errors.New("No entry for title '" + string(titleBytes) + "'")
+		}
+
+		// else, each key is a link, so grab them all
+		bucket.ForEach(func(key, value []byte) error {
+			bytesLinks = append(bytesLinks, key)
+			return nil
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// convert the links to strings
+	var links []string
+	for _, bytesLink := range bytesLinks {
+		links = append(links, string(bytesLink))
+	}
+
+	return links, nil
 }
