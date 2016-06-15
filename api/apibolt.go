@@ -54,27 +54,13 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 	// preserve the original link even if there's a redirect
 	redirector := title
 
-	titleBytes := []byte(title)
-
 	// check if the title redirects
-	err := bl.redir.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(titleBytes)
-		// no redirect for this page
-        if bucket == nil {
-			return nil
-		}
-
-		bucket.ForEach(func(key, value []byte) error {
-			// if we find a redirect, switch to that instead
-			log.Println("Redirecting", title, "to", string(key))
-			titleBytes = []byte(EncodeTitle(string(key)))
-			return nil
-		})
-		return nil
-	})
+	title, err := bl.lookupRedirect(title)
 	if err != nil {
 		return Page{}, err
 	}
+
+	titleBytes := []byte(title)
 
 	// load up the links
 	var bytesLinks [][]byte
@@ -102,4 +88,29 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 	}
 
 	return Page{redirector, string(titleBytes), links}, nil
+}
+
+// Checks if the given title redirects to a different page.
+// If it does, returns the title that is redirected to.
+// If it doesn't, returns the original title.
+func (bl *boltLoader) lookupRedirect(title string) (string, error) {
+	titleBytes := []byte(title)
+
+	err := bl.redir.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(titleBytes)
+
+		// no bucket means no redirect
+		if bucket == nil {
+			return nil
+		}
+
+		// the redirect bucket contains only one key, value pair, the title to redirect to
+		bucket.ForEach(func(key, value []byte) error {
+			titleBytes = []byte(EncodeTitle(string(key)))
+			return nil
+		})
+		return nil
+	})
+
+	return string(titleBytes), err
 }
