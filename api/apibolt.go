@@ -14,6 +14,7 @@ type boltLoader struct {
 	redir *bolt.DB
 	wg sync.WaitGroup
 	closing bool
+	closeLock sync.Mutex
 }
 
 func GetBoltPageLoader() (PageLoader, error) {
@@ -27,18 +28,34 @@ func GetBoltPageLoader() (PageLoader, error) {
 		return nil, err
 	}
 
-	pageLoader := boltLoader{index, redir, sync.WaitGroup{}, false}
+	pageLoader := boltLoader{index, redir, sync.WaitGroup{}, false, sync.Mutex{}}
 	return &pageLoader, nil
 }
 
 func (bl *boltLoader) Close() {
-	// wait until everyone is done before closing bolt
-	// this is kinda hacky and likely not the right way to do things...
-	bl.closing = true
+	// set the closing flag so that no new loads are started
+	bl.setClosing()
+
+	// wait until existing loads are done
 	bl.wg.Wait()
 
+	// then shut down the connections
 	bl.index.Close()
 	bl.redir.Close()
+}
+
+func (bl *boltLoader) setClosing() {
+	bl.closeLock.Lock()
+	defer bl.closeLock.Unlock()
+
+	bl.closing = true
+}
+
+func (bl *boltLoader) IsClosing() bool {
+	bl.closeLock.Lock()
+	defer bl.closeLock.Unlock()
+
+	return bl.closing
 }
 
 func (bl *boltLoader) LoadPage(title string) (Page, error) {
@@ -46,7 +63,7 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 	bl.wg.Add(1)
 	defer bl.wg.Done()
 
-	if bl.closing {
+	if bl.IsClosing() {
 		return Page{}, errors.New("Connection closed")
 	}
 
