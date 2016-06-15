@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"github.com/boltdb/bolt"
-	"log"
 	"sync"
 )
 
@@ -97,7 +96,7 @@ func (bl *boltLoader) lookupLinks(title string) ([]string, error) {
 	titleBytes := []byte(title)
 
 	// load up the links
-	var bytesLinks [][]byte
+	var links []string
 	err := bl.index.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(titleBytes)
 
@@ -108,19 +107,13 @@ func (bl *boltLoader) lookupLinks(title string) ([]string, error) {
 
 		// else, each key is a link, so grab them all
 		bucket.ForEach(func(key, value []byte) error {
-			bytesLinks = append(bytesLinks, key)
+			links = append(links, string(key))
 			return nil
 		})
 		return nil
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	// convert the links to strings
-	var links []string
-	for _, bytesLink := range bytesLinks {
-		links = append(links, string(bytesLink))
 	}
 
 	return links, nil
