@@ -17,15 +17,17 @@ func lookup(writer http.ResponseWriter, request *http.Request) {
 	end := values.Get("end")
 
 	path, err := lookupPathWithTimeout(start, end)
+
+	result := make(map[string]interface{})
 	if err != nil {
 		log.Print(err)
-		errorJson := map[string]string{"error": err.Error()}
-		errorBytes, _ := json.Marshal(&errorJson)
-		io.WriteString(writer, string(errorBytes))
+		result["error"] = err.Error()
 	} else {
-		pathBytes, _ := json.Marshal(&path)
-		io.WriteString(writer, string(pathBytes))
+		result["path"] = path
 	}
+
+	resultBytes, _ := json.Marshal(&result)
+	io.WriteString(writer, string(resultBytes))
 }
 
 func lookupPathWithTimeout(start, end string) (api.TitlePath, error) {
