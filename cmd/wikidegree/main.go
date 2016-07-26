@@ -11,8 +11,8 @@ import (
 	"os"
 
 	"github.com/kbuzsaki/wikidegree/api"
-	"github.com/kbuzsaki/wikidegree/bfs"
-	"github.com/kbuzsaki/wikidegree/iddfs"
+	"github.com/kbuzsaki/wikidegree/search/bfs"
+	"github.com/kbuzsaki/wikidegree/search/iddfs"
 )
 
 type parameters struct {

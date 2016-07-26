@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/kbuzsaki/wikidegree/api"
-	"github.com/kbuzsaki/wikidegree/bfs"
+	"github.com/kbuzsaki/wikidegree/search/bfs"
 )
 
 func lookup(writer http.ResponseWriter, request *http.Request) {
