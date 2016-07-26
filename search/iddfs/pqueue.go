@@ -8,13 +8,13 @@ import (
 	"container/heap"
 	"fmt"
 
-	"github.com/kbuzsaki/wikidegree/api"
+	"github.com/kbuzsaki/wikidegree/wiki"
 )
 
-func DfsQueue(input <-chan api.TitlePath, requests <-chan chan<- api.TitlePath) {
+func DfsQueue(input <-chan wiki.TitlePath, requests <-chan chan<- wiki.TitlePath) {
 	// internal channel variable that will be nil if the pqueue is empty
 	// this lets us avoid taking requests when we're unable to fulfill them
-	var internalRequests <-chan chan<- api.TitlePath
+	var internalRequests <-chan chan<- wiki.TitlePath
 	pqueue := make(titlePathQueue, 0)
 
 	for {
@@ -43,7 +43,7 @@ func TestPQueue() {
 
 	fmt.Println("start:", pqueue)
 
-	patterns := []api.TitlePath{
+	patterns := []wiki.TitlePath{
 		{"apple", "banana"},
 		{"apple", "grape"},
 		{"carrot", "grape", "pear", "bear"},
@@ -62,8 +62,8 @@ func TestPQueue() {
 
 	fmt.Println("pushing stuff")
 
-	pqueue.push(api.TitlePath{"grape"})
-	pqueue.push(api.TitlePath{"grape", "circus", "some", "long", "thing"})
+	pqueue.push(wiki.TitlePath{"grape"})
+	pqueue.push(wiki.TitlePath{"grape", "circus", "some", "long", "thing"})
 
 	for len(pqueue) > 0 {
 		item := pqueue.pop()
@@ -77,18 +77,18 @@ func TestPQueue() {
 // The type isn't exported because it's an implementation detail.
 // Anyone wanting to use this should go through the
 // DfsQueue function and communicate using channels
-type titlePathQueue []api.TitlePath
+type titlePathQueue []wiki.TitlePath
 
 // The methods that I actually care about for the DfsQueue
 // They're preferable to heap.Interface's equivalents
 // because they use the TitlePath type instead of interface{}
-func (pq *titlePathQueue) push(item api.TitlePath) {
+func (pq *titlePathQueue) push(item wiki.TitlePath) {
 	heap.Push(pq, item)
 }
 
-func (pq *titlePathQueue) pop() api.TitlePath {
+func (pq *titlePathQueue) pop() wiki.TitlePath {
 	item := heap.Pop(pq)
-	return item.(api.TitlePath)
+	return item.(wiki.TitlePath)
 }
 
 // The methods needed to implement heap.Interface
@@ -107,7 +107,7 @@ func (h titlePathQueue) Swap(i, j int) {
 }
 
 func (pqueue *titlePathQueue) Push(item interface{}) {
-	*pqueue = append(*pqueue, item.(api.TitlePath))
+	*pqueue = append(*pqueue, item.(wiki.TitlePath))
 }
 
 func (pqueue *titlePathQueue) Pop() interface{} {

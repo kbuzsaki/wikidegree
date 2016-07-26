@@ -25,34 +25,34 @@ package iddfs
 import (
 	"fmt"
 
-	"github.com/kbuzsaki/wikidegree/api"
+	"github.com/kbuzsaki/wikidegree/wiki"
 	"golang.org/x/net/context"
 )
 
 const defaultMaxWorkerThreads = 10
 const defaultMaxDepth = 4
 
-func GetIddfsPathFinder(pageLoader api.PageLoader) api.PathFinder {
+func GetIddfsPathFinder(pageLoader wiki.PageLoader) wiki.PathFinder {
 	pathFinder := iddfsPathFinder{pageLoader, defaultMaxWorkerThreads, defaultMaxDepth, true}
 	return &pathFinder
 }
 
-// Implements api.PathFinder
+// Implements wiki.PathFinder
 type iddfsPathFinder struct {
-	pageLoader       api.PageLoader
+	pageLoader       wiki.PageLoader
 	maxWorkerThreads int
 	maxDepth         int
 	serial           bool
 }
 
-// Implements api.PathFinder.SetPageLoader()
-func (ipf *iddfsPathFinder) SetPageLoader(pageLoader api.PageLoader) {
+// Implements wiki.PathFinder.SetPageLoader()
+func (ipf *iddfsPathFinder) SetPageLoader(pageLoader wiki.PageLoader) {
 	ipf.pageLoader = pageLoader
 }
 
-// Implements api.PathFinder.FindPath()
-func (ipf *iddfsPathFinder) FindPath(ctx context.Context, start, end string) (api.TitlePath, error) {
-	var path api.TitlePath
+// Implements wiki.PathFinder.FindPath()
+func (ipf *iddfsPathFinder) FindPath(ctx context.Context, start, end string) (wiki.TitlePath, error) {
+	var path wiki.TitlePath
 
 	if ipf.serial {
 		path = ipf.findNearestPathSerial(start, end)
@@ -63,7 +63,7 @@ func (ipf *iddfsPathFinder) FindPath(ctx context.Context, start, end string) (ap
 	return path, nil
 }
 
-func (ipf *iddfsPathFinder) findNearestPathParallel(start string, end string) api.TitlePath {
+func (ipf *iddfsPathFinder) findNearestPathParallel(start string, end string) wiki.TitlePath {
 	// iterative deepening parallel currently doesn't work,
 	// the program will deadlock once there is nothing left to read
 	//
@@ -86,10 +86,10 @@ func (ipf *iddfsPathFinder) findNearestPathParallel(start string, end string) ap
 	return ipf.depthLimitedSearchParallel(start, end, ipf.maxDepth)
 }
 
-func (ipf *iddfsPathFinder) depthLimitedSearchParallel(start string, end string, depthLimit int) api.TitlePath {
-	requestQueue := make(chan chan<- api.TitlePath)
-	loadedQueue := make(chan api.TitlePath)
-	toLoadQueue := make(chan api.TitlePath)
+func (ipf *iddfsPathFinder) depthLimitedSearchParallel(start string, end string, depthLimit int) wiki.TitlePath {
+	requestQueue := make(chan chan<- wiki.TitlePath)
+	loadedQueue := make(chan wiki.TitlePath)
+	toLoadQueue := make(chan wiki.TitlePath)
 
 	go DfsQueue(toLoadQueue, requestQueue)
 
@@ -97,7 +97,7 @@ func (ipf *iddfsPathFinder) depthLimitedSearchParallel(start string, end string,
 		go ipf.requestQueueWorker(requestQueue, loadedQueue)
 	}
 
-	toLoadQueue <- api.TitlePath{start}
+	toLoadQueue <- wiki.TitlePath{start}
 
 	for titlePath := range loadedQueue {
 		if titlePath.Head() == end {
@@ -110,8 +110,8 @@ func (ipf *iddfsPathFinder) depthLimitedSearchParallel(start string, end string,
 	return nil
 }
 
-func (ipf *iddfsPathFinder) requestQueueWorker(requestQueue chan<- chan<- api.TitlePath, output chan<- api.TitlePath) {
-	input := make(chan api.TitlePath)
+func (ipf *iddfsPathFinder) requestQueueWorker(requestQueue chan<- chan<- wiki.TitlePath, output chan<- wiki.TitlePath) {
+	input := make(chan wiki.TitlePath)
 
 	for {
 		requestQueue <- input
@@ -127,7 +127,7 @@ func (ipf *iddfsPathFinder) requestQueueWorker(requestQueue chan<- chan<- api.Ti
 	}
 }
 
-func (ipf *iddfsPathFinder) findNearestPathSerial(start string, end string) api.TitlePath {
+func (ipf *iddfsPathFinder) findNearestPathSerial(start string, end string) wiki.TitlePath {
 	for depthLimit := 1; depthLimit <= ipf.maxDepth; depthLimit++ {
 		fmt.Println()
 		fmt.Println("Beginning search with depth limit", depthLimit)
@@ -140,14 +140,14 @@ func (ipf *iddfsPathFinder) findNearestPathSerial(start string, end string) api.
 	return nil
 }
 
-func (ipf *iddfsPathFinder) depthLimitedSearchSerial(start string, end string, depthLimit int) api.TitlePath {
+func (ipf *iddfsPathFinder) depthLimitedSearchSerial(start string, end string, depthLimit int) wiki.TitlePath {
 	// technically this isn't needed anymore,
 	// since a depth limited search will handle cycles gracefully
 	visited := make(map[string]bool)
 	visited[start] = true
 
-	var titlePath api.TitlePath
-	titlePathStack := []api.TitlePath{{start}}
+	var titlePath wiki.TitlePath
+	titlePathStack := []wiki.TitlePath{{start}}
 
 	for len(titlePathStack) > 0 {
 		titlePath, titlePathStack = titlePathStack[len(titlePathStack)-1], titlePathStack[:len(titlePathStack)-1]

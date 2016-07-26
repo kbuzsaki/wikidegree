@@ -27,33 +27,33 @@ Hopefully iddfs.go will help with that :)
 package bfs
 
 import (
-	"github.com/kbuzsaki/wikidegree/api"
+	"github.com/kbuzsaki/wikidegree/wiki"
 	"golang.org/x/net/context"
 )
 
 const defaultFrontierSize = 10 * 1000 * 1000
 const defaultNumScraperThreads = 10
 
-func GetBfsPathFinder(pageLoader api.PageLoader) api.PathFinder {
+func GetBfsPathFinder(pageLoader wiki.PageLoader) wiki.PathFinder {
 	pathFinder := bfsPathFinder{pageLoader, defaultFrontierSize, defaultNumScraperThreads, false}
 	return &pathFinder
 }
 
-// Implements api.PathFinder
+// Implements wiki.PathFinder
 type bfsPathFinder struct {
-	pageLoader        api.PageLoader
+	pageLoader        wiki.PageLoader
 	frontierSize      int
 	numScraperThreads int
 	serial            bool
 }
 
-// Implements api.PathFinder.SetPageLoader()
-func (bpf *bfsPathFinder) SetPageLoader(pageLoader api.PageLoader) {
+// Implements wiki.PathFinder.SetPageLoader()
+func (bpf *bfsPathFinder) SetPageLoader(pageLoader wiki.PageLoader) {
 	bpf.pageLoader = pageLoader
 }
 
-// Implements api.PathFinder.FindPath()
-func (bpf *bfsPathFinder) FindPath(ctx context.Context, start, end string) (api.TitlePath, error) {
+// Implements wiki.PathFinder.FindPath()
+func (bpf *bfsPathFinder) FindPath(ctx context.Context, start, end string) (wiki.TitlePath, error) {
 	if bpf.serial {
 		return bpf.findNearestPathSerial(start, end)
 	} else {

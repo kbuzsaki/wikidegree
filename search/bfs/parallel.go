@@ -6,13 +6,13 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/kbuzsaki/wikidegree/api"
+	"github.com/kbuzsaki/wikidegree/wiki"
 )
 
 // parallel implementation of bfs
-func (bpf *bfsPathFinder) findNearestPathParallel(ctx context.Context, start, end string) (api.TitlePath, error) {
+func (bpf *bfsPathFinder) findNearestPathParallel(ctx context.Context, start, end string) (wiki.TitlePath, error) {
 	titles := make(chan string, bpf.frontierSize)
-	pages := make(chan api.Page)
+	pages := make(chan wiki.Page)
 
 	for i := 0; i < bpf.numScraperThreads; i++ {
 		go bpf.loadPages(ctx, titles, pages)
@@ -54,7 +54,7 @@ func (bpf *bfsPathFinder) findNearestPathParallel(ctx context.Context, start, en
 }
 
 // simple function for loading pages from the loader
-func (bpf *bfsPathFinder) loadPages(ctx context.Context, titles <-chan string, pages chan<- api.Page) {
+func (bpf *bfsPathFinder) loadPages(ctx context.Context, titles <-chan string, pages chan<- wiki.Page) {
 	for {
 		select {
 		case <-ctx.Done():

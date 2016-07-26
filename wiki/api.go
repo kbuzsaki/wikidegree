@@ -3,13 +3,13 @@ Implements a simple interface for loading the content from wikipedia pages.
 This lets you easily find all of the pages that a given wikipedia page
 links to.
 
-Currently loads data a bit messily using the json api.
+Currently loads data a bit messily using the json wiki.
 
 In the future, an alternate implementation could load the data from a local
 copy of wikipedia, even extending the interface to allow searching for all
 links to a particular page.
 */
-package api
+package wiki
 
 import (
 	"net/url"

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kbuzsaki/wikidegree/api"
+	"github.com/kbuzsaki/wikidegree/wiki"
 	"github.com/kbuzsaki/wikidegree/search/bfs"
 	"golang.org/x/net/context"
 )
@@ -39,7 +39,7 @@ func lookup(writer http.ResponseWriter, request *http.Request) {
 	io.WriteString(writer, string(resultBytes))
 }
 
-func lookupPathWithTimeout(start, end string) (api.TitlePath, error) {
+func lookupPathWithTimeout(start, end string) (wiki.TitlePath, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeLimit)
 	defer cancel()
 
@@ -57,16 +57,16 @@ func lookupPathWithTimeout(start, end string) (api.TitlePath, error) {
 	}
 }
 
-func lookupPath(ctx context.Context, start, end string) (api.TitlePath, error) {
+func lookupPath(ctx context.Context, start, end string) (wiki.TitlePath, error) {
 	// valiate start and end titles exist
 	if start == "" || end == "" {
 		return nil, errors.New("start and end parameters required")
 	}
-	start = api.EncodeTitle(start)
-	end = api.EncodeTitle(end)
+	start = wiki.EncodeTitle(start)
+	end = wiki.EncodeTitle(end)
 
 	// load the page loader, currently only bolt
-	pageLoader, err := api.GetBoltPageLoader()
+	pageLoader, err := wiki.GetBoltPageLoader()
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +88,8 @@ func lookupPath(ctx context.Context, start, end string) (api.TitlePath, error) {
 	}
 
 	// use the page titles instead of the user input in case there were redirects
-	start = api.EncodeTitle(startPage.Title)
-	end = api.EncodeTitle(endPage.Title)
+	start = wiki.EncodeTitle(startPage.Title)
+	end = wiki.EncodeTitle(endPage.Title)
 
 	log.Println("Finding path from '" + start + "' to '" + end + "'")
 
@@ -101,5 +101,5 @@ func lookupPath(ctx context.Context, start, end string) (api.TitlePath, error) {
 func main() {
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 	http.HandleFunc("/api/lookup", lookup)
-	http.ListenAndServe(":8000", nil)
+	http.ListenAndServe(":8080", nil)
 }

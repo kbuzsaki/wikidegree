@@ -9,7 +9,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/kbuzsaki/wikidegree/api"
+	"github.com/kbuzsaki/wikidegree/wiki"
 )
 
 const xmlDumpFilename = "xml/enwiki-20151201-pages-articles.xml"
@@ -26,7 +26,7 @@ func main() {
 func load() {
 	fmt.Println("Starting...")
 
-	pages := make(chan api.Page)
+	pages := make(chan wiki.Page)
 	redirects := make(chan Page)
 
 	//go loadPagesFromMysql("kbuzsaki@/wiki", pages)
@@ -90,7 +90,7 @@ type Page struct {
 	Text  string   `xml:"revision>text"`
 }
 
-func loadPagesFromXml(filename string, pages chan api.Page, redirects chan Page) {
+func loadPagesFromXml(filename string, pages chan wiki.Page, redirects chan Page) {
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
@@ -115,15 +115,15 @@ func loadPagesFromXml(filename string, pages chan api.Page, redirects chan Page)
 				if page.Redir != nilredir {
 					redirects <- page
 				} else {
-					links := api.ParseLinks(page.Text)
-					pages <- api.Page{page.Title, page.Title, links}
+					links := wiki.ParseLinks(page.Text)
+					pages <- wiki.Page{page.Title, page.Title, links}
 				}
 			}
 		}
 	}
 }
 
-func loadPagesFromMysql(dataSource string, pages chan api.Page) {
+func loadPagesFromMysql(dataSource string, pages chan wiki.Page) {
 	db, err := sql.Open("mysql", dataSource)
 	if err != nil {
 		log.Fatal(err)
@@ -143,8 +143,8 @@ func loadPagesFromMysql(dataSource string, pages chan api.Page) {
 			log.Fatal(err)
 		}
 
-		links := api.ParseLinks(body)
-		page := api.Page{title, title, links}
+		links := wiki.ParseLinks(body)
+		page := wiki.Page{title, title, links}
 		pages <- page
 	}
 }

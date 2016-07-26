@@ -10,9 +10,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/kbuzsaki/wikidegree/api"
 	"github.com/kbuzsaki/wikidegree/search/bfs"
 	"github.com/kbuzsaki/wikidegree/search/iddfs"
+	"github.com/kbuzsaki/wikidegree/wiki"
 	"golang.org/x/net/context"
 )
 
@@ -82,29 +82,29 @@ func getParameters() (parameters, error) {
 		return parameters{}, fmt.Errorf("Expected exactly 2 arguments (start and end), found %d", flag.NArg())
 	}
 	args := flag.Args()
-	start := api.EncodeTitle(args[0])
-	end := api.EncodeTitle(args[1])
+	start := wiki.EncodeTitle(args[0])
+	end := wiki.EncodeTitle(args[1])
 
 	return parameters{*sourcePtr, *algorithmPtr, start, end, *verbosePtr}, nil
 }
 
-func getPageLoader(source string) api.PageLoader {
+func getPageLoader(source string) wiki.PageLoader {
 	switch source {
 	case "bolt":
-		pageLoader, err := api.GetBoltPageLoader()
+		pageLoader, err := wiki.GetBoltPageLoader()
 		if err != nil {
 			log.Fatal(err)
 		}
 		return pageLoader
 	case "web":
-		return api.GetWebPageLoader()
+		return wiki.GetWebPageLoader()
 	default:
 		log.Fatal("Unknown source:", source)
 		return nil
 	}
 }
 
-func getPathFinder(algorithm string, pageLoader api.PageLoader) api.PathFinder {
+func getPathFinder(algorithm string, pageLoader wiki.PageLoader) wiki.PathFinder {
 	switch algorithm {
 	case "bfs":
 		return bfs.GetBfsPathFinder(pageLoader)

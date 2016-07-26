@@ -4,24 +4,24 @@ import (
 	"errors"
 	"log"
 
-	"github.com/kbuzsaki/wikidegree/api"
+	"github.com/kbuzsaki/wikidegree/wiki"
 )
 
 // queue for use by serial bfs
-type TitlePathQueue []api.TitlePath
+type TitlePathQueue []wiki.TitlePath
 
-func (pathQueue *TitlePathQueue) Push(titlePath api.TitlePath) {
+func (pathQueue *TitlePathQueue) Push(titlePath wiki.TitlePath) {
 	*pathQueue = append(*pathQueue, titlePath)
 }
 
-func (pathQueue *TitlePathQueue) Pop() api.TitlePath {
-	var titlePath api.TitlePath
+func (pathQueue *TitlePathQueue) Pop() wiki.TitlePath {
+	var titlePath wiki.TitlePath
 	titlePath, *pathQueue = (*pathQueue)[0], (*pathQueue)[1:]
 	return titlePath
 }
 
 // serial implementation of bfs
-func (bpf *bfsPathFinder) findNearestPathSerial(start string, end string) (api.TitlePath, error) {
+func (bpf *bfsPathFinder) findNearestPathSerial(start string, end string) (wiki.TitlePath, error) {
 	visited := make(map[string]bool)
 	visited[start] = true
 	frontier := TitlePathQueue{{start}}

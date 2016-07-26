@@ -1,4 +1,4 @@
-package api
+package wiki
 
 import (
 	"encoding/json"
@@ -8,8 +8,8 @@ import (
 	"net/http"
 )
 
-const apiBaseUrl = "https://en.wikipedia.org/w/api.php"
-const defaultPageUrl = apiBaseUrl + "?action=query&prop=revisions&rvprop=content&format=json&titles="
+const wikiBaseUrl = "https://en.wikipedia.org/w/api.php"
+const defaultPageUrl = wikiBaseUrl + "?action=query&prop=revisions&rvprop=content&format=json&titles="
 
 type webLoader struct {
 	pageUrl string
