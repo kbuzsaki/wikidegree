@@ -28,6 +28,7 @@ package bfs
 
 import (
 	"github.com/kbuzsaki/wikidegree/api"
+	"golang.org/x/net/context"
 )
 
 const defaultFrontierSize = 10 * 1000 * 1000
@@ -52,10 +53,10 @@ func (bpf *bfsPathFinder) SetPageLoader(pageLoader api.PageLoader) {
 }
 
 // Implements api.PathFinder.FindPath()
-func (bpf *bfsPathFinder) FindPath(start, end string) (api.TitlePath, error) {
+func (bpf *bfsPathFinder) FindPath(ctx context.Context, start, end string) (api.TitlePath, error) {
 	if bpf.serial {
 		return bpf.findNearestPathSerial(start, end)
 	} else {
-		return bpf.findNearestPathParallel(start, end)
+		return bpf.findNearestPathParallel(ctx, start, end)
 	}
 }

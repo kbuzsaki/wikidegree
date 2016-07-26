@@ -4,38 +4,48 @@ import (
 	"errors"
 	"log"
 
+	"golang.org/x/net/context"
+
 	"github.com/kbuzsaki/wikidegree/api"
 )
 
 // parallel implementation of bfs
-func (bpf *bfsPathFinder) findNearestPathParallel(start, end string) (api.TitlePath, error) {
+func (bpf *bfsPathFinder) findNearestPathParallel(ctx context.Context, start, end string) (api.TitlePath, error) {
 	titles := make(chan string, bpf.frontierSize)
 	pages := make(chan api.Page)
 
 	for i := 0; i < bpf.numScraperThreads; i++ {
-		go bpf.loadPages(titles, pages)
+		go bpf.loadPages(ctx, titles, pages)
 	}
 
 	titles <- start
 	visited := make(map[string]string)
 	visited[start] = ""
 
-	for page := range pages {
-		if page.Redirector != page.Title && len(visited[page.Title]) == 0 {
-			visited[page.Title] = visited[page.Redirector]
-		}
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, nil
+		case page, ok := <-pages:
+			if !ok {
+				return nil, nil
+			}
+			if page.Redirector != page.Title && len(visited[page.Title]) == 0 {
+				visited[page.Title] = visited[page.Redirector]
+			}
 
-		for _, link := range page.Links {
-			if link == end {
-				// close the channels to halt other goroutines
-				close(titles)
+			for _, link := range page.Links {
+				if link == end {
+					// close the channels to halt other goroutines
+					close(titles)
 
-				log.Println("Found end page:", end, "stopping...")
-				visited[link] = page.Title
-				return pathFromVisited(visited, start, end), nil
-			} else if len(visited[link]) == 0 {
-				visited[link] = page.Title
-				titles <- link
+					log.Println("Found end page:", end, "stopping...")
+					visited[link] = page.Title
+					return pathFromVisited(visited, start, end), nil
+				} else if len(visited[link]) == 0 {
+					visited[link] = page.Title
+					titles <- link
+				}
 			}
 		}
 	}
@@ -44,13 +54,21 @@ func (bpf *bfsPathFinder) findNearestPathParallel(start, end string) (api.TitleP
 }
 
 // simple function for loading pages from the loader
-func (bpf *bfsPathFinder) loadPages(titles <-chan string, pages chan<- api.Page) {
-	for title := range titles {
-		log.Println("Loading page:", title)
-		if page, err := bpf.pageLoader.LoadPage(title); err == nil {
-			pages <- page
-		} else {
-			log.Println("Error loading page:", title, "error:", err)
+func (bpf *bfsPathFinder) loadPages(ctx context.Context, titles <-chan string, pages chan<- api.Page) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case title, ok := <-titles:
+			if !ok {
+				return
+			}
+			log.Println("Loading page:", title)
+			if page, err := bpf.pageLoader.LoadPage(title); err == nil {
+				pages <- page
+			} else {
+				log.Println("Error loading page:", title, "error:", err)
+			}
 		}
 	}
 }

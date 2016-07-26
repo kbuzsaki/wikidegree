@@ -15,6 +15,8 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+
+	"golang.org/x/net/context"
 )
 
 // Represents a wiki page
@@ -52,7 +54,7 @@ func (titlePath TitlePath) Catted(title string) TitlePath {
 // page to another
 type PathFinder interface {
 	SetPageLoader(pageLoader PageLoader)
-	FindPath(start, end string) (TitlePath, error)
+	FindPath(ctx context.Context, start, end string) (TitlePath, error)
 }
 
 // Helper function that parses the links from a page's body text.

@@ -10,6 +10,11 @@ import (
 
 	"github.com/kbuzsaki/wikidegree/api"
 	"github.com/kbuzsaki/wikidegree/search/bfs"
+	"golang.org/x/net/context"
+)
+
+const (
+	timeLimit = time.Second * 10
 )
 
 func lookup(writer http.ResponseWriter, request *http.Request) {
@@ -35,34 +40,24 @@ func lookup(writer http.ResponseWriter, request *http.Request) {
 }
 
 func lookupPathWithTimeout(start, end string) (api.TitlePath, error) {
-	resultChan := make(chan api.TitlePath)
-	errorChan := make(chan error)
+	ctx, cancel := context.WithTimeout(context.Background(), timeLimit)
+	defer cancel()
 
-	go func() {
-		result, err := lookupPath(start, end)
-		if err != nil {
-			errorChan <- err
-		}
-		resultChan <- result
-	}()
+	result, err := lookupPath(ctx, start, end)
 
-	timeout := time.After(10 * time.Second)
-	select {
-	case result := <-resultChan:
-		log.Println("Got result:", result)
-		return result, nil
-	case err := <-errorChan:
+	if ctx.Err() != nil {
+		log.Println("timed out :(")
+		return nil, errors.New("Timed out after 10 seconds.")
+	} else if err != nil {
 		log.Println("Got error:", err)
 		return nil, err
-	case <-timeout:
-		log.Println("timed out :(")
-		return nil, errors.New("timed out after 10 seconds")
+	} else {
+		log.Println("Got result:", result)
+		return result, nil
 	}
-
-	return nil, nil
 }
 
-func lookupPath(start, end string) (api.TitlePath, error) {
+func lookupPath(ctx context.Context, start, end string) (api.TitlePath, error) {
 	// valiate start and end titles exist
 	if start == "" || end == "" {
 		return nil, errors.New("start and end parameters required")
@@ -100,7 +95,7 @@ func lookupPath(start, end string) (api.TitlePath, error) {
 
 	// actually find the path using bfs
 	pathFinder := bfs.GetBfsPathFinder(pageLoader)
-	return pathFinder.FindPath(start, end)
+	return pathFinder.FindPath(ctx, start, end)
 }
 
 func main() {

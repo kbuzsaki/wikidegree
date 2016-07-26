@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	"github.com/kbuzsaki/wikidegree/api"
+	"golang.org/x/net/context"
 )
 
 const defaultMaxWorkerThreads = 10
@@ -50,7 +51,7 @@ func (ipf *iddfsPathFinder) SetPageLoader(pageLoader api.PageLoader) {
 }
 
 // Implements api.PathFinder.FindPath()
-func (ipf *iddfsPathFinder) FindPath(start, end string) (api.TitlePath, error) {
+func (ipf *iddfsPathFinder) FindPath(ctx context.Context, start, end string) (api.TitlePath, error) {
 	var path api.TitlePath
 
 	if ipf.serial {

@@ -13,6 +13,7 @@ import (
 	"github.com/kbuzsaki/wikidegree/api"
 	"github.com/kbuzsaki/wikidegree/search/bfs"
 	"github.com/kbuzsaki/wikidegree/search/iddfs"
+	"golang.org/x/net/context"
 )
 
 type parameters struct {
@@ -61,7 +62,9 @@ func main() {
 	// actually perform search
 	fmt.Println("Finding shortest path from", params.start, "to", params.end, "using", params.algorithm)
 
-	path, err := pathFinder.FindPath(params.start, params.end)
+	ctx := context.Background()
+
+	path, err := pathFinder.FindPath(ctx, params.start, params.end)
 	if err != nil {
 		log.Fatal(err)
 	}
