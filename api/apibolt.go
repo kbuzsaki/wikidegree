@@ -2,8 +2,9 @@ package api
 
 import (
 	"errors"
-	"github.com/boltdb/bolt"
 	"sync"
+
+	"github.com/boltdb/bolt"
 )
 
 const defaultIndexName = "db/index.db"
@@ -19,7 +20,7 @@ type boltLoader struct {
 	wg sync.WaitGroup
 
 	// atomic boolean to block new loads from starting when a close is requested
-	closing bool
+	closing   bool
 	closeLock sync.Mutex
 }
 

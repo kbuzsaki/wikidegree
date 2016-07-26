@@ -24,7 +24,8 @@ package iddfs
 
 import (
 	"fmt"
-	api "github.com/kbuzsaki/wikidegree/api"
+
+	"github.com/kbuzsaki/wikidegree/api"
 )
 
 const defaultMaxWorkerThreads = 10
@@ -37,19 +38,19 @@ func GetIddfsPathFinder(pageLoader api.PageLoader) api.PathFinder {
 
 // Implements api.PathFinder
 type iddfsPathFinder struct {
-	pageLoader api.PageLoader
+	pageLoader       api.PageLoader
 	maxWorkerThreads int
-	maxDepth int
-	serial bool
+	maxDepth         int
+	serial           bool
 }
 
 // Implements api.PathFinder.SetPageLoader()
-func (ipf* iddfsPathFinder) SetPageLoader(pageLoader api.PageLoader) {
+func (ipf *iddfsPathFinder) SetPageLoader(pageLoader api.PageLoader) {
 	ipf.pageLoader = pageLoader
 }
 
 // Implements api.PathFinder.FindPath()
-func (ipf* iddfsPathFinder) FindPath(start, end string) (api.TitlePath, error) {
+func (ipf *iddfsPathFinder) FindPath(start, end string) (api.TitlePath, error) {
 	var path api.TitlePath
 
 	if ipf.serial {
@@ -61,7 +62,6 @@ func (ipf* iddfsPathFinder) FindPath(start, end string) (api.TitlePath, error) {
 	return path, nil
 }
 
-
 func (ipf *iddfsPathFinder) findNearestPathParallel(start string, end string) api.TitlePath {
 	// iterative deepening parallel currently doesn't work,
 	// the program will deadlock once there is nothing left to read
@@ -70,15 +70,15 @@ func (ipf *iddfsPathFinder) findNearestPathParallel(start string, end string) ap
 	//       to find the shortest path from start to end
 	//
 	/*
-	for depthLimit := 2; depthLimit <= MaxDepth; depthLimit++ {
-		fmt.Println()
-		fmt.Println("Beginning search with depth limit", depthLimit)
-		path := depthLimitedSearchParallel(start, end, depthLimit)
+		for depthLimit := 2; depthLimit <= MaxDepth; depthLimit++ {
+			fmt.Println()
+			fmt.Println("Beginning search with depth limit", depthLimit)
+			path := depthLimitedSearchParallel(start, end, depthLimit)
 
-		if path != nil {
-			return path
+			if path != nil {
+				return path
+			}
 		}
-	}
 	*/
 
 	// just do a regular depth limited search instead
@@ -109,7 +109,7 @@ func (ipf *iddfsPathFinder) depthLimitedSearchParallel(start string, end string,
 	return nil
 }
 
-func (ipf *iddfsPathFinder) requestQueueWorker(requestQueue chan<-chan<- api.TitlePath, output chan<- api.TitlePath) {
+func (ipf *iddfsPathFinder) requestQueueWorker(requestQueue chan<- chan<- api.TitlePath, output chan<- api.TitlePath) {
 	input := make(chan api.TitlePath)
 
 	for {
@@ -169,4 +169,3 @@ func (ipf *iddfsPathFinder) depthLimitedSearchSerial(start string, end string, d
 
 	return nil
 }
-

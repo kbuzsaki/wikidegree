@@ -9,17 +9,18 @@ import (
 	"fmt"
 	"log"
 	"os"
-	bfs "github.com/kbuzsaki/wikidegree/bfs"
-	iddfs "github.com/kbuzsaki/wikidegree/iddfs"
-	api "github.com/kbuzsaki/wikidegree/api"
+
+	"github.com/kbuzsaki/wikidegree/api"
+	"github.com/kbuzsaki/wikidegree/bfs"
+	"github.com/kbuzsaki/wikidegree/iddfs"
 )
 
 type parameters struct {
-	source string
+	source    string
 	algorithm string
-	start string
-	end string
-	verbose bool
+	start     string
+	end       string
+	verbose   bool
 }
 
 func main() {
@@ -111,4 +112,3 @@ func getPathFinder(algorithm string, pageLoader api.PageLoader) api.PathFinder {
 		return nil
 	}
 }
-

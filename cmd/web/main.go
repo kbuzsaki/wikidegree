@@ -5,10 +5,11 @@ import (
 	"errors"
 	"io"
 	"log"
-	"time"
 	"net/http"
-	bfs "github.com/kbuzsaki/wikidegree/bfs"
-	api "github.com/kbuzsaki/wikidegree/api"
+	"time"
+
+	"github.com/kbuzsaki/wikidegree/api"
+	"github.com/kbuzsaki/wikidegree/bfs"
 )
 
 func lookup(writer http.ResponseWriter, request *http.Request) {
@@ -47,15 +48,15 @@ func lookupPathWithTimeout(start, end string) (api.TitlePath, error) {
 
 	timeout := time.After(10 * time.Second)
 	select {
-		case result := <-resultChan:
-			log.Println("Got result:", result)
-			return result, nil
-		case err := <-errorChan:
-			log.Println("Got error:", err)
-			return nil, err
-		case <-timeout:
-			log.Println("timed out :(")
-			return nil, errors.New("timed out after 10 seconds")
+	case result := <-resultChan:
+		log.Println("Got result:", result)
+		return result, nil
+	case err := <-errorChan:
+		log.Println("Got error:", err)
+		return nil, err
+	case <-timeout:
+		log.Println("timed out :(")
+		return nil, errors.New("timed out after 10 seconds")
 	}
 
 	return nil, nil

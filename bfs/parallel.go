@@ -3,11 +3,12 @@ package bfs
 import (
 	"errors"
 	"log"
-	api "github.com/kbuzsaki/wikidegree/api"
+
+	"github.com/kbuzsaki/wikidegree/api"
 )
 
 // parallel implementation of bfs
-func (bpf* bfsPathFinder) findNearestPathParallel(start, end string) (api.TitlePath, error) {
+func (bpf *bfsPathFinder) findNearestPathParallel(start, end string) (api.TitlePath, error) {
 	titles := make(chan string, bpf.frontierSize)
 	pages := make(chan api.Page)
 
@@ -43,7 +44,7 @@ func (bpf* bfsPathFinder) findNearestPathParallel(start, end string) (api.TitleP
 }
 
 // simple function for loading pages from the loader
-func (bpf* bfsPathFinder) loadPages(titles <-chan string, pages chan<- api.Page) {
+func (bpf *bfsPathFinder) loadPages(titles <-chan string, pages chan<- api.Page) {
 	for title := range titles {
 		log.Println("Loading page:", title)
 		if page, err := bpf.pageLoader.LoadPage(title); err == nil {

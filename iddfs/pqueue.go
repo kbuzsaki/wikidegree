@@ -7,7 +7,8 @@ package iddfs
 import (
 	"container/heap"
 	"fmt"
-	api "github.com/kbuzsaki/wikidegree/api"
+
+	"github.com/kbuzsaki/wikidegree/api"
 )
 
 func DfsQueue(input <-chan api.TitlePath, requests <-chan chan<- api.TitlePath) {
@@ -15,7 +16,6 @@ func DfsQueue(input <-chan api.TitlePath, requests <-chan chan<- api.TitlePath) 
 	// this lets us avoid taking requests when we're unable to fulfill them
 	var internalRequests <-chan chan<- api.TitlePath
 	pqueue := make(titlePathQueue, 0)
-
 
 	for {
 		select {
@@ -37,7 +37,6 @@ func DfsQueue(input <-chan api.TitlePath, requests <-chan chan<- api.TitlePath) 
 		}
 	}
 }
-
 
 func TestPQueue() {
 	pqueue := make(titlePathQueue, 0)
@@ -71,7 +70,6 @@ func TestPQueue() {
 		fmt.Println(item)
 	}
 }
-
 
 // Code implementing a priority queue, based off of
 // https://golang.org/pkg/container/heap/#pkg-overview
@@ -114,8 +112,7 @@ func (pqueue *titlePathQueue) Push(item interface{}) {
 
 func (pqueue *titlePathQueue) Pop() interface{} {
 	length := len(*pqueue)
-	item := (*pqueue)[length - 1]
-	*pqueue = (*pqueue)[: length - 1]
+	item := (*pqueue)[length-1]
+	*pqueue = (*pqueue)[:length-1]
 	return item
 }
-

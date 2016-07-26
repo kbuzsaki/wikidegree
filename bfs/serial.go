@@ -3,7 +3,8 @@ package bfs
 import (
 	"errors"
 	"log"
-	api "github.com/kbuzsaki/wikidegree/api"
+
+	"github.com/kbuzsaki/wikidegree/api"
 )
 
 // queue for use by serial bfs

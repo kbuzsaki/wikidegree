@@ -27,7 +27,7 @@ Hopefully iddfs.go will help with that :)
 package bfs
 
 import (
-	api "github.com/kbuzsaki/wikidegree/api"
+	"github.com/kbuzsaki/wikidegree/api"
 )
 
 const defaultFrontierSize = 10 * 1000 * 1000
@@ -40,23 +40,22 @@ func GetBfsPathFinder(pageLoader api.PageLoader) api.PathFinder {
 
 // Implements api.PathFinder
 type bfsPathFinder struct {
-	pageLoader api.PageLoader
-	frontierSize int
+	pageLoader        api.PageLoader
+	frontierSize      int
 	numScraperThreads int
-	serial bool
+	serial            bool
 }
 
 // Implements api.PathFinder.SetPageLoader()
-func (bpf* bfsPathFinder) SetPageLoader(pageLoader api.PageLoader) {
+func (bpf *bfsPathFinder) SetPageLoader(pageLoader api.PageLoader) {
 	bpf.pageLoader = pageLoader
 }
 
 // Implements api.PathFinder.FindPath()
-func (bpf* bfsPathFinder) FindPath(start, end string) (api.TitlePath, error) {
+func (bpf *bfsPathFinder) FindPath(start, end string) (api.TitlePath, error) {
 	if bpf.serial {
 		return bpf.findNearestPathSerial(start, end)
 	} else {
 		return bpf.findNearestPathParallel(start, end)
 	}
 }
-
