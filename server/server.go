@@ -34,7 +34,7 @@ func (s *serverImpl) HandlePathLookup(writer http.ResponseWriter, request *http.
 	start := values.Get("start")
 	end := values.Get("end")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	startTime := time.Now()
