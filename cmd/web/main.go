@@ -13,67 +13,60 @@ import (
 	"golang.org/x/net/context"
 )
 
-const (
-	timeLimit = time.Second * 10
-)
+type Server struct {
+	pageLoader wiki.PageLoader
+}
 
-func lookup(writer http.ResponseWriter, request *http.Request) {
+func (s *Server) renderJSON(writer http.ResponseWriter, resp interface{}) {
+	respBytes, _ := json.Marshal(&resp)
+	io.WriteString(writer, string(respBytes))
+}
+
+func (s *Server) renderError(writer http.ResponseWriter, err error) {
+	s.renderJSON(writer, map[string]string{"error": err.Error()})
+}
+
+func (s *Server) handleLookup(writer http.ResponseWriter, request *http.Request) {
 	values := request.URL.Query()
 	start := values.Get("start")
 	end := values.Get("end")
 
 	startTime := time.Now()
-	path, err := lookupPathWithTimeout(start, end)
+	path, err := s.lookupPathWithTimeout(start, end, 10 * time.Second)
 	duration := time.Since(startTime)
 
-	result := make(map[string]interface{})
-	result["time"] = duration.String()
 	if err != nil {
-		log.Print(err)
-		result["error"] = err.Error()
+		s.renderError(writer, err)
 	} else {
-		result["path"] = path
+		s.renderJSON(writer, map[string]interface{}{
+			"time": duration.String(),
+			"path": path,
+		})
 	}
-
-	resultBytes, _ := json.Marshal(&result)
-	io.WriteString(writer, string(resultBytes))
 }
 
-func lookupPathWithTimeout(start, end string) (wiki.TitlePath, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeLimit)
+func (s *Server) lookupPathWithTimeout(start, end string, timeout time.Duration) (wiki.TitlePath, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	result, err := lookupPath(ctx, start, end)
-
+	result, err := s.lookupPath(ctx, start, end)
 	if ctx.Err() != nil {
-		log.Println("timed out :(")
 		return nil, errors.New("Timed out after 10 seconds.")
-	} else if err != nil {
-		log.Println("Got error:", err)
-		return nil, err
-	} else {
-		log.Println("Got result:", result)
-		return result, nil
 	}
+
+	return result, err
 }
 
-func lookupPath(ctx context.Context, start, end string) (wiki.TitlePath, error) {
+func (s *Server) lookupPath(ctx context.Context, start, end string) (wiki.TitlePath, error) {
 	// valiate start and end titles exist
 	if start == "" || end == "" {
 		return nil, errors.New("start and end parameters required")
 	}
-	start = wiki.EncodeTitle(start)
-	end = wiki.EncodeTitle(end)
-
-	// load the page loader, currently only bolt
-	pageLoader, err := wiki.GetBoltPageLoader()
-	if err != nil {
-		return nil, err
-	}
-	defer pageLoader.Close()
+	start = wiki.NormalizeTitle(start)
+	end = wiki.NormalizeTitle(end)
 
 	// validate that the start page exists and has links
-	startPage, err := pageLoader.LoadPage(start)
+	startPage, err := s.pageLoader.LoadPage(start)
 	if err != nil {
 		return nil, err
 	}
@@ -82,24 +75,49 @@ func lookupPath(ctx context.Context, start, end string) (wiki.TitlePath, error) 
 	}
 
 	// validate that the end page exists
-	endPage, err := pageLoader.LoadPage(end)
+	endPage, err := s.pageLoader.LoadPage(end)
 	if err != nil {
 		return nil, err
 	}
 
 	// use the page titles instead of the user input in case there were redirects
-	start = wiki.EncodeTitle(startPage.Title)
-	end = wiki.EncodeTitle(endPage.Title)
+	start = wiki.NormalizeTitle(startPage.Title)
+	end = wiki.NormalizeTitle(endPage.Title)
 
 	log.Println("Finding path from '" + start + "' to '" + end + "'")
 
 	// actually find the path using bfs
-	pathFinder := bfs.GetBfsPathFinder(pageLoader)
+	pathFinder := bfs.GetBfsPathFinder(s.pageLoader)
 	return pathFinder.FindPath(ctx, start, end)
 }
 
+func (s *Server) handleLinks(writer http.ResponseWriter, request *http.Request) {
+	values := request.URL.Query()
+	title := values.Get("title")
+	if title == "" {
+		s.renderError(writer, errors.New("title is required"))
+		return
+	}
+
+	title = wiki.EncodeTitle(title)
+	page, err := s.pageLoader.LoadPage(title)
+	if err != nil {
+		s.renderError(writer, err)
+	} else {
+		s.renderJSON(writer, page)
+	}
+}
+
 func main() {
+	pageLoader, err := wiki.GetBoltPageLoader()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s := &Server{pageLoader}
+
 	http.Handle("/", http.FileServer(http.Dir("./static")))
-	http.HandleFunc("/api/lookup", lookup)
+	http.HandleFunc("/api/lookup", s.handleLookup)
+	http.HandleFunc("/api/page", s.handleLinks)
 	http.ListenAndServe(":8080", nil)
 }

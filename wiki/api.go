@@ -77,8 +77,13 @@ func ParseLinks(content string) []string {
 func EncodeTitle(title string) string {
 	// the first character of the string is case insensitive,
 	// but all the rest is *sensitive*
+	title = NormalizeTitle(title)
+	title = url.QueryEscape(title)
+	return title
+}
+
+func NormalizeTitle(title string) string {
 	title = strings.ToUpper(title[0:1]) + title[1:]
 	title = strings.Replace(title, " ", "_", -1)
-	title = url.QueryEscape(title)
 	return title
 }
