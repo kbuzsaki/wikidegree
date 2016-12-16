@@ -26,7 +26,7 @@ func load() {
 	//go loadPagesFromMysql("kbuzsaki@/wiki", pages)
 	go loadPagesFromXml(xmlDumpFilename, pages, redirects)
 
-	pageSaver, err := wiki.GetBoldPageSaver()
+	pageSaver, err := wiki.GetBoltPageSaver()
 	if err != nil {
 		log.Fatal(err)
 	}

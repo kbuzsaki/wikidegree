@@ -147,7 +147,7 @@ func (bl *boltLoader) isClosing() bool {
 	return bl.closing
 }
 
-func GetBoldPageSaver() (PageSaver, error) {
+func GetBoltPageSaver() (PageSaver, error) {
 	index, err := bolt.Open(defaultIndexName, 0600, nil)
 	if err != nil {
 		return nil, err
