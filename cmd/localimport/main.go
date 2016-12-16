@@ -1,32 +1,35 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/xml"
+	"flag"
 	"fmt"
 	"log"
 	"os"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/kbuzsaki/wikidegree/wiki"
 )
 
-const xmlDumpFilename = "xml/enwiki-20151201-pages-articles.xml"
+const defaultXmlDumpFilename = "xml/enwiki-20151201-pages-articles.xml"
 
 func main() {
-	load()
+	xmlDumpFilename := flag.String("xml", defaultXmlDumpFilename, "the full text xml dump to import from")
+	indexFilename := flag.String("index", wiki.DefaultIndexName, "the boltdb index db")
+	redirFilename := flag.String("redir", wiki.DefaultRedirName, "the boltdb redirect db")
+
+	flag.Parse()
+
+	fmt.Println("Starting...")
+	load(*xmlDumpFilename, *indexFilename, *redirFilename)
 }
 
-func load() {
-	fmt.Println("Starting...")
-
+func load(xmlDumpFilename, indexFilename, redirFilename string) {
 	pages := make(chan wiki.Page)
 	redirects := make(chan Page)
 
-	//go loadPagesFromMysql("kbuzsaki@/wiki", pages)
 	go loadPagesFromXml(xmlDumpFilename, pages, redirects)
 
-	pageSaver, err := wiki.GetBoltPageSaver()
+	pageSaver, err := wiki.GetBoltPageSaver(indexFilename, redirFilename)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -94,31 +97,5 @@ func loadPagesFromXml(filename string, pages chan wiki.Page, redirects chan Page
 				}
 			}
 		}
-	}
-}
-
-func loadPagesFromMysql(dataSource string, pages chan wiki.Page) {
-	db, err := sql.Open("mysql", dataSource)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	rows, err := db.Query("SELECT title, body FROM Pages")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var title string
-		var body string
-		if err := rows.Scan(&title, &body); err != nil {
-			log.Fatal(err)
-		}
-
-		links := wiki.ParseLinks(body)
-		page := wiki.Page{title, title, links}
-		pages <- page
 	}
 }

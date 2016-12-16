@@ -7,8 +7,8 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-const defaultIndexName = "db/index.db"
-const defaultRedirName = "db/redir.db"
+const DefaultIndexName = "db/index.db"
+const DefaultRedirName = "db/redir.db"
 
 type boltLoader struct {
 	// connection to db of {title -> links} mappings
@@ -25,12 +25,12 @@ type boltLoader struct {
 }
 
 func GetBoltPageLoader() (PageLoader, error) {
-	index, err := bolt.Open(defaultIndexName, 0600, &bolt.Options{ReadOnly: true})
+	index, err := bolt.Open(DefaultIndexName, 0600, &bolt.Options{ReadOnly: true})
 	if err != nil {
 		return nil, err
 	}
 
-	redir, err := bolt.Open(defaultRedirName, 0600, &bolt.Options{ReadOnly: true})
+	redir, err := bolt.Open(DefaultRedirName, 0600, &bolt.Options{ReadOnly: true})
 	if err != nil {
 		return nil, err
 	}
@@ -147,13 +147,13 @@ func (bl *boltLoader) isClosing() bool {
 	return bl.closing
 }
 
-func GetBoltPageSaver() (PageSaver, error) {
-	index, err := bolt.Open(defaultIndexName, 0600, nil)
+func GetBoltPageSaver(indexFilename, redirFilename string) (PageSaver, error) {
+	index, err := bolt.Open(indexFilename, 0600, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	redir, err := bolt.Open(defaultRedirName, 0600, nil)
+	redir, err := bolt.Open(redirFilename, 0600, nil)
 	if err != nil {
 		return nil, err
 	}
