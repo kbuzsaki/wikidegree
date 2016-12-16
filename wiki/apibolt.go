@@ -39,40 +39,12 @@ func GetBoltPageLoader() (PageLoader, error) {
 	return &pageLoader, nil
 }
 
-// Blocks new loads from starting, waits for existing loads to complete,
-// and then shuts down the db connections
-func (bl *boltLoader) Close() {
-	// set the closing flag so that no new loads are started
-	bl.setClosing()
-
-	// wait until existing loads are done
-	bl.wg.Wait()
-
-	// then shut down the connections
-	bl.index.Close()
-	bl.redir.Close()
-}
-
-func (bl *boltLoader) setClosing() {
-	bl.closeLock.Lock()
-	defer bl.closeLock.Unlock()
-
-	bl.closing = true
-}
-
-func (bl *boltLoader) IsClosing() bool {
-	bl.closeLock.Lock()
-	defer bl.closeLock.Unlock()
-
-	return bl.closing
-}
-
 func (bl *boltLoader) LoadPage(title string) (Page, error) {
 	// make sure the connections don't close until we're done
 	bl.wg.Add(1)
 	defer bl.wg.Done()
 
-	if bl.IsClosing() {
+	if bl.isClosing() {
 		return Page{}, errors.New("Connection closed")
 	}
 
@@ -143,4 +115,87 @@ func (bl *boltLoader) lookupLinks(title string) ([]string, error) {
 	}
 
 	return links, nil
+}
+
+// Blocks new loads from starting, waits for existing loads to complete,
+// and then shuts down the db connections
+func (bl *boltLoader) Close() error {
+	// set the closing flag so that no new loads are started
+	bl.setClosing()
+
+	// wait until existing loads are done
+	bl.wg.Wait()
+
+	// then shut down the connections
+	bl.index.Close()
+	bl.redir.Close()
+
+	return nil
+}
+
+func (bl *boltLoader) setClosing() {
+	bl.closeLock.Lock()
+	defer bl.closeLock.Unlock()
+
+	bl.closing = true
+}
+
+func (bl *boltLoader) isClosing() bool {
+	bl.closeLock.Lock()
+	defer bl.closeLock.Unlock()
+
+	return bl.closing
+}
+
+func GetBoldPageSaver() (PageSaver, error) {
+	index, err := bolt.Open(defaultIndexName, 0600, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	redir, err := bolt.Open(defaultRedirName, 0600, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	pageLoader := boltLoader{index, redir, sync.WaitGroup{}, false, sync.Mutex{}}
+	return &pageLoader, nil
+}
+
+func (bl *boltLoader) SavePage(page Page) error {
+	err := bl.index.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucket([]byte(page.Title))
+		if err != nil {
+			return err
+		}
+
+		for _, link := range page.Links {
+			err = bucket.Put([]byte(link), []byte{})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return err
+}
+
+func (bl *boltLoader) SaveRedirect(source, target string) error {
+	err := bl.redir.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucket([]byte(source))
+		if err != nil {
+			return err
+		}
+
+		err = bucket.Put([]byte(target), []byte{})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	return err
 }

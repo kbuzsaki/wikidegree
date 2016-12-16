@@ -12,6 +12,7 @@ links to a particular page.
 package wiki
 
 import (
+	"io"
 	"net/url"
 	"regexp"
 	"strings"
@@ -32,7 +33,13 @@ type Page struct {
 // Takes the title of the page and returns the Page struct.
 type PageLoader interface {
 	LoadPage(title string) (Page, error)
-	Close()
+	io.Closer
+}
+
+type PageSaver interface {
+	SavePage(page Page) error
+	SaveRedirect(source, target string) error
+	io.Closer
 }
 
 // Represents a series of page titles/links that take you from one page

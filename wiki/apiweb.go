@@ -46,7 +46,8 @@ func (wl webLoader) LoadPage(title string) (Page, error) {
 	return Page{}, errors.New(fmt.Sprint("No revisions found for", title))
 }
 
-func (wl webLoader) Close() {
+func (wl webLoader) Close() error {
+	return nil
 }
 
 func (wl webLoader) loadPageContentFromApi(title string) (body []byte, err error) {

@@ -7,17 +7,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/boltdb/bolt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/kbuzsaki/wikidegree/wiki"
 )
 
 const xmlDumpFilename = "xml/enwiki-20151201-pages-articles.xml"
-
-const indexName = "db/index.db"
-const redirName = "db/redir.db"
-
-const commitThreshold = 10000
 
 func main() {
 	load()
@@ -32,51 +26,31 @@ func load() {
 	//go loadPagesFromMysql("kbuzsaki@/wiki", pages)
 	go loadPagesFromXml(xmlDumpFilename, pages, redirects)
 
-	index, err := bolt.Open(indexName, 0600, nil)
+	pageSaver, err := wiki.GetBoldPageSaver()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer index.Close()
-
-	redir, err := bolt.Open(redirName, 0600, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer redir.Close()
+	defer pageSaver.Close()
 
 	counter := 0
 	for {
 		select {
 		case page := <-pages:
-			index.Update(func(tx *bolt.Tx) error {
-				titleBytes := []byte(page.Title)
-				bucket, err := tx.CreateBucket(titleBytes)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				for _, link := range page.Links {
-					linkBytes := []byte(link)
-					bucket.Put(linkBytes, []byte{})
-				}
-				return nil
-			})
+			err = pageSaver.SavePage(page)
+			if err != nil {
+				log.Fatal(err)
+			}
 		case redirect := <-redirects:
-			redir.Update(func(tx *bolt.Tx) error {
-				titleBytes := []byte(redirect.Title)
-				bucket, err := tx.CreateBucket(titleBytes)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				linkBytes := []byte(redirect.Redir.Title)
-				bucket.Put(linkBytes, []byte{})
-				return nil
-			})
+			err = pageSaver.SaveRedirect(redirect.Title, redirect.Redir.Title)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 
 		counter++
-		fmt.Println(counter)
+		if counter%1000 == 0 {
+			fmt.Println(counter)
+		}
 	}
 }
 
