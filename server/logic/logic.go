@@ -1,12 +1,12 @@
 package logic
 
 import (
+	"context"
 	"errors"
 	"log"
 
 	"github.com/kbuzsaki/wikidegree/search/bfs"
 	"github.com/kbuzsaki/wikidegree/wiki"
-	"golang.org/x/net/context"
 )
 
 type Logic interface {

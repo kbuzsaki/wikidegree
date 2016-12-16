@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -8,7 +9,6 @@ import (
 	"time"
 
 	"github.com/kbuzsaki/wikidegree/server/logic"
-	"golang.org/x/net/context"
 )
 
 type Server interface {

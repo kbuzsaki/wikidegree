@@ -27,8 +27,9 @@ Hopefully iddfs.go will help with that :)
 package bfs
 
 import (
+	"context"
+
 	"github.com/kbuzsaki/wikidegree/wiki"
-	"golang.org/x/net/context"
 )
 
 const defaultFrontierSize = 10 * 1000 * 1000

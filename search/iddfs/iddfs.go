@@ -23,10 +23,10 @@ additioanl cpu and network.
 package iddfs
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/kbuzsaki/wikidegree/wiki"
-	"golang.org/x/net/context"
 )
 
 const defaultMaxWorkerThreads = 10

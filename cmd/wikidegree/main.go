@@ -5,6 +5,7 @@ Maybe this will eventually turn into a decent command line interface.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -13,7 +14,6 @@ import (
 	"github.com/kbuzsaki/wikidegree/search/bfs"
 	"github.com/kbuzsaki/wikidegree/search/iddfs"
 	"github.com/kbuzsaki/wikidegree/wiki"
-	"golang.org/x/net/context"
 )
 
 type parameters struct {

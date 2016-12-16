@@ -12,12 +12,11 @@ links to a particular page.
 package wiki
 
 import (
+	"context"
 	"io"
 	"net/url"
 	"regexp"
 	"strings"
-
-	"golang.org/x/net/context"
 )
 
 // Represents a wiki page

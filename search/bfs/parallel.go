@@ -1,10 +1,9 @@
 package bfs
 
 import (
+	"context"
 	"errors"
 	"log"
-
-	"golang.org/x/net/context"
 
 	"github.com/kbuzsaki/wikidegree/wiki"
 )
