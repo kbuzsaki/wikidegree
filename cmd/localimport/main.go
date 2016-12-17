@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/kbuzsaki/wikidegree/wiki"
 )
 
 const defaultXmlDumpFilename = "xml/enwiki-20151201-pages-articles.xml"
+const printThresh = 100
 
 func main() {
 	xmlDumpFilename := flag.String("xml", defaultXmlDumpFilename, "the full text xml dump to import from")
@@ -36,6 +38,7 @@ func load(xmlDumpFilename, indexFilename, redirFilename string) {
 	defer pageSaver.Close()
 
 	counter := 0
+	start := time.Now()
 	for {
 		select {
 		case page := <-pages:
@@ -51,8 +54,10 @@ func load(xmlDumpFilename, indexFilename, redirFilename string) {
 		}
 
 		counter++
-		if counter%1000 == 0 {
-			fmt.Println(counter)
+		if counter%printThresh == 0 {
+			duration := time.Since(start)
+			fmt.Println(counter, "(", duration, ")")
+			start = time.Now()
 		}
 	}
 }
