@@ -164,13 +164,16 @@ func GetBoltPageSaver(indexFilename, redirFilename string) (PageSaver, error) {
 
 func (bl *boltLoader) SavePage(page Page) error {
 	err := bl.index.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucket([]byte(page.Title))
-		if err != nil {
-			return err
-		}
+		return bl.savePage(tx, page)
+	})
 
-		for _, link := range page.Links {
-			err = bucket.Put([]byte(link), []byte{})
+	return err
+}
+
+func (bl *boltLoader) SavePages(pages []Page) error {
+	err := bl.index.Update(func(tx *bolt.Tx) error {
+		for _, page := range pages {
+			err := bl.savePage(tx, page)
 			if err != nil {
 				return err
 			}
@@ -182,20 +185,55 @@ func (bl *boltLoader) SavePage(page Page) error {
 	return err
 }
 
-func (bl *boltLoader) SaveRedirect(source, target string) error {
-	err := bl.redir.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucket([]byte(source))
+func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
+	bucket, err := tx.CreateBucket([]byte(page.Title))
+	if err != nil {
+		return err
+	}
+
+	for _, link := range page.Links {
+		err = bucket.Put([]byte(link), []byte{})
 		if err != nil {
 			return err
 		}
+	}
 
-		err = bucket.Put([]byte(target), []byte{})
-		if err != nil {
-			return err
+	return nil
+}
+
+func (bl *boltLoader) SaveRedirect(redirect Redirect) error {
+	err := bl.redir.Update(func(tx *bolt.Tx) error {
+		return bl.saveRedirect(tx, redirect)
+	})
+
+	return err
+}
+
+func (bl *boltLoader) SaveRedirects(redirects []Redirect) error {
+	err := bl.redir.Update(func(tx *bolt.Tx) error {
+		for _, redirect := range redirects {
+			err := bl.saveRedirect(tx, redirect)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
 	})
 
 	return err
+}
+
+func (bl *boltLoader) saveRedirect(tx *bolt.Tx, redirect Redirect) error {
+	bucket, err := tx.CreateBucket([]byte(redirect.Source))
+	if err != nil {
+		return err
+	}
+
+	err = bucket.Put([]byte(redirect.Target), []byte{})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

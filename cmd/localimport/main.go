@@ -13,6 +13,7 @@ import (
 
 const defaultXmlDumpFilename = "xml/enwiki-20151201-pages-articles.xml"
 const printThresh = 100
+const bufferMax = 1000
 
 func main() {
 	xmlDumpFilename := flag.String("xml", defaultXmlDumpFilename, "the full text xml dump to import from")
@@ -28,8 +29,9 @@ func main() {
 func load(xmlDumpFilename, indexFilename, redirFilename string) {
 	pages := make(chan wiki.Page)
 	redirects := make(chan Page)
+	done := make(chan struct{})
 
-	go loadPagesFromXml(xmlDumpFilename, pages, redirects)
+	go loadPagesFromXml(xmlDumpFilename, pages, redirects, done)
 
 	pageSaver, err := wiki.GetBoltPageSaver(indexFilename, redirFilename)
 	if err != nil {
@@ -37,20 +39,43 @@ func load(xmlDumpFilename, indexFilename, redirFilename string) {
 	}
 	defer pageSaver.Close()
 
+	var pageBuffer []wiki.Page
+	var redirectBuffer []wiki.Redirect
+
 	counter := 0
 	start := time.Now()
 	for {
 		select {
 		case page := <-pages:
-			err = pageSaver.SavePage(page)
-			if err != nil {
-				log.Fatal(err)
+			pageBuffer = append(pageBuffer, page)
+
+			if len(pageBuffer) >= bufferMax {
+				err = pageSaver.SavePages(pageBuffer)
+				if err != nil {
+					log.Fatal(err)
+				}
+				pageBuffer = pageBuffer[0:0]
 			}
 		case redirect := <-redirects:
-			err = pageSaver.SaveRedirect(redirect.Title, redirect.Redir.Title)
+			redirectBuffer = append(redirectBuffer, wiki.Redirect{redirect.Title, redirect.Redir.Title})
+
+			if len(redirectBuffer) >= bufferMax {
+				err = pageSaver.SaveRedirects(redirectBuffer)
+				if err != nil {
+					log.Fatal(err)
+				}
+				redirectBuffer = redirectBuffer[0:0]
+			}
+		case <-done:
+			err = pageSaver.SavePages(pageBuffer)
 			if err != nil {
 				log.Fatal(err)
 			}
+			err = pageSaver.SaveRedirects(redirectBuffer)
+			if err != nil {
+				log.Fatal(err)
+			}
+			break
 		}
 
 		counter++
@@ -72,7 +97,7 @@ type Page struct {
 	Text  string   `xml:"revision>text"`
 }
 
-func loadPagesFromXml(filename string, pages chan wiki.Page, redirects chan Page) {
+func loadPagesFromXml(filename string, pages chan wiki.Page, redirects chan Page, done chan struct{}) {
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
@@ -103,4 +128,6 @@ func loadPagesFromXml(filename string, pages chan wiki.Page, redirects chan Page
 			}
 		}
 	}
+
+	done <- struct{}{}
 }

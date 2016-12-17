@@ -28,6 +28,11 @@ type Page struct {
 	Links      []string // the links on the page
 }
 
+type Redirect struct {
+	Source string
+	Target string
+}
+
 // Represents something that can load wiki pages
 // Takes the title of the page and returns the Page struct.
 type PageLoader interface {
@@ -37,7 +42,9 @@ type PageLoader interface {
 
 type PageSaver interface {
 	SavePage(page Page) error
-	SaveRedirect(source, target string) error
+	SavePages(pages []Page) error
+	SaveRedirect(redirect Redirect) error
+	SaveRedirects(redirects []Redirect) error
 	io.Closer
 }
 
