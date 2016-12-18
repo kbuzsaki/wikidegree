@@ -126,9 +126,7 @@ func aggregatePages(wg *sync.WaitGroup, xmlPages <-chan XmlPage, pages chan<- []
 	}
 
 	redirects <- redirectBuffer
-	close(redirects)
 	pages <- pageBuffer
-	close(pages)
 	done <- struct{}{}
 }
 
@@ -141,7 +139,8 @@ func savePages(wg *sync.WaitGroup, indexFilename, redirFilename string, pages <-
 	}
 	defer pageSaver.Close()
 
-	for {
+	remaining := true
+	for remaining {
 		select {
 		case pageBuffer := <-pages:
 			err := pageSaver.SavePages(pageBuffer)
@@ -154,7 +153,7 @@ func savePages(wg *sync.WaitGroup, indexFilename, redirFilename string, pages <-
 				log.Fatal(err)
 			}
 		case <-done:
-			break
+			remaining = false
 		}
 	}
 }
