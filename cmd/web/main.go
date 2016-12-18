@@ -17,5 +17,9 @@ func main() {
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 	http.HandleFunc("/api/path", s.HandlePathLookup)
 	http.HandleFunc("/api/page", s.HandlePageLookup)
-	http.ListenAndServe(":8080", nil)
+
+	err = http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
