@@ -38,7 +38,7 @@ func (wl webLoader) LoadPage(title string) (Page, error) {
 
 			// TODO: actually implement redirect support in the web loader
 			redirector := title
-			page := Page{redirector, title, links}
+			page := Page{Redirector: redirector, Title: title, Links: links}
 			return page, nil
 		}
 	}

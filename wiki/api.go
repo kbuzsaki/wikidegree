@@ -25,12 +25,8 @@ import (
 type Page struct {
 	Redirector string   // the original link used to get to the page, usually but not always the same as title
 	Title      string   // the actual title of the page
+	Redirect   string   // the page that this page redirects to
 	Links      []string // the links on the page
-}
-
-type Redirect struct {
-	Source string
-	Target string
 }
 
 // Represents something that can load wiki pages
@@ -43,8 +39,6 @@ type PageLoader interface {
 type PageSaver interface {
 	SavePage(page Page) error
 	SavePages(pages []Page) error
-	SaveRedirect(redirect Redirect) error
-	SaveRedirects(redirects []Redirect) error
 	io.Closer
 }
 
@@ -72,6 +66,10 @@ type PathFinder interface {
 
 // Helper function that parses the links from a page's body text.
 func ParseLinks(content string) []string {
+	if content == "" {
+		return []string{}
+	}
+
 	regex, _ := regexp.Compile("\\[\\[(.+?)(\\]\\]|\\||#)")
 
 	matches := regex.FindAllStringSubmatch(content, -1)

@@ -22,7 +22,6 @@ const bufferMax = 10000
 func main() {
 	xmlDumpFilename := flag.String("xml", defaultXmlDumpFilename, "the full text xml dump to import from")
 	indexFilename := flag.String("index", wiki.DefaultIndexName, "the boltdb index db")
-	redirFilename := flag.String("redir", wiki.DefaultRedirName, "the boltdb redirect db")
 	flag.Parse()
 
 	go func() {
@@ -30,20 +29,19 @@ func main() {
 	}()
 
 	fmt.Println("Starting...")
-	load(*xmlDumpFilename, *indexFilename, *redirFilename)
+	load(*xmlDumpFilename, *indexFilename)
 }
 
-func load(xmlDumpFilename, indexFilename, redirFilename string) {
+func load(xmlDumpFilename, indexFilename string) {
 	xmlPages := make(chan XmlPage, 1000)
 	pages := make(chan []wiki.Page, 1000)
-	redirects := make(chan []wiki.Redirect, 1000)
 	done := make(chan struct{})
 
 	wg := &sync.WaitGroup{}
 	wg.Add(3)
 	go loadPagesFromXml(wg, xmlDumpFilename, xmlPages)
-	go aggregatePages(wg, xmlPages, pages, redirects, done)
-	go savePages(wg, indexFilename, redirFilename, pages, redirects, done)
+	go aggregatePages(wg, xmlPages, pages, done)
+	go savePages(wg, indexFilename, pages, done)
 	wg.Wait()
 }
 
@@ -87,34 +85,21 @@ func loadPagesFromXml(wg *sync.WaitGroup, filename string, xmlPages chan<- XmlPa
 	close(xmlPages)
 }
 
-func aggregatePages(wg *sync.WaitGroup, xmlPages <-chan XmlPage, pages chan<- []wiki.Page, redirects chan<- []wiki.Redirect, done chan<- struct{}) {
+func aggregatePages(wg *sync.WaitGroup, xmlPages <-chan XmlPage, pages chan<- []wiki.Page, done chan<- struct{}) {
 	defer wg.Done()
 
 	var pageBuffer []wiki.Page
-	var redirectBuffer []wiki.Redirect
-
 	counter := 0
 	start := time.Now()
 
-	var nilredir XmlRedirect
 	for xmlPage := range xmlPages {
-		if xmlPage.Redirect != nilredir {
-			redirect := wiki.Redirect{xmlPage.Title, xmlPage.Redirect.Title}
-			redirectBuffer = append(redirectBuffer, redirect)
+		links := wiki.ParseLinks(xmlPage.Text)
+		page := wiki.Page{Title: xmlPage.Title, Redirect: xmlPage.Redirect.Title, Links: links}
+		pageBuffer = append(pageBuffer, page)
 
-			if len(redirectBuffer) >= bufferMax {
-				redirects <- redirectBuffer
-				redirectBuffer = nil
-			}
-		} else {
-			links := wiki.ParseLinks(xmlPage.Text)
-			page := wiki.Page{xmlPage.Title, xmlPage.Title, links}
-			pageBuffer = append(pageBuffer, page)
-
-			if len(pageBuffer) >= bufferMax {
-				pages <- pageBuffer
-				pageBuffer = nil
-			}
+		if len(pageBuffer) >= bufferMax {
+			pages <- pageBuffer
+			pageBuffer = nil
 		}
 
 		counter++
@@ -125,15 +110,14 @@ func aggregatePages(wg *sync.WaitGroup, xmlPages <-chan XmlPage, pages chan<- []
 		}
 	}
 
-	redirects <- redirectBuffer
 	pages <- pageBuffer
 	done <- struct{}{}
 }
 
-func savePages(wg *sync.WaitGroup, indexFilename, redirFilename string, pages <-chan []wiki.Page, redirects <-chan []wiki.Redirect, done <-chan struct{}) {
+func savePages(wg *sync.WaitGroup, indexFilename string, pages <-chan []wiki.Page, done <-chan struct{}) {
 	defer wg.Done()
 
-	pageSaver, err := wiki.GetBoltPageSaver(indexFilename, redirFilename)
+	pageSaver, err := wiki.GetBoltPageSaver(indexFilename)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -144,11 +128,6 @@ func savePages(wg *sync.WaitGroup, indexFilename, redirFilename string, pages <-
 		select {
 		case pageBuffer := <-pages:
 			err := pageSaver.SavePages(pageBuffer)
-			if err != nil {
-				log.Fatal(err)
-			}
-		case redirectBuffer := <-redirects:
-			err := pageSaver.SaveRedirects(redirectBuffer)
 			if err != nil {
 				log.Fatal(err)
 			}

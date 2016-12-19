@@ -45,13 +45,11 @@ func inspect(db *bolt.DB, title string) {
 			return nil
 		}
 
-		var links []string
+		fmt.Printf("title: '%s'\n", title)
 		bucket.ForEach(func(key, value []byte) error {
-			links = append(links, string(key))
+			fmt.Printf("key: %#v, value: %#v\n", string(key), string(value))
 			return nil
 		})
-
-		fmt.Printf("'%s': %#v\n", title, links)
 
 		return nil
 	})

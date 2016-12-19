@@ -4,17 +4,21 @@ import (
 	"errors"
 	"sync"
 
+	"strings"
+
 	"github.com/boltdb/bolt"
 )
 
 const DefaultIndexName = "db/index.db"
-const DefaultRedirName = "db/redir.db"
+
+var redirectKey = []byte("redir")
+var linksKey = []byte("links")
+
+const linkSeparator = "\n"
 
 type boltLoader struct {
 	// connection to db of {title -> links} mappings
 	index *bolt.DB
-	// connection to db of {title -> redirect} mappings
-	redir *bolt.DB
 
 	// waitgroup to keep track of whether the connections are in use
 	wg sync.WaitGroup
@@ -30,12 +34,7 @@ func GetBoltPageLoader() (PageLoader, error) {
 		return nil, err
 	}
 
-	redir, err := bolt.Open(DefaultRedirName, 0600, &bolt.Options{ReadOnly: true})
-	if err != nil {
-		return nil, err
-	}
-
-	pageLoader := boltLoader{index, redir, sync.WaitGroup{}, false, sync.Mutex{}}
+	pageLoader := boltLoader{index: index}
 	return &pageLoader, nil
 }
 
@@ -48,73 +47,45 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 		return Page{}, errors.New("Connection closed")
 	}
 
-	// preserve the original link even if there's a redirect
-	redirector := title
+	page, err := bl.lookupPage(title)
+	if err != nil {
+		return Page{}, err
+	}
 
 	// check if the title redirects
-	title, err := bl.lookupRedirect(title)
-	if err != nil {
-		return Page{}, err
-	}
-
-	links, err := bl.lookupLinks(title)
-	if err != nil {
-		return Page{}, err
-	}
-
-	return Page{redirector, title, links}, nil
-}
-
-// Checks if the given title redirects to a different page.
-// If it does, returns the title that is redirected to.
-// If it doesn't, returns the original title.
-func (bl *boltLoader) lookupRedirect(title string) (string, error) {
-	titleBytes := []byte(title)
-
-	err := bl.redir.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(titleBytes)
-
-		// no bucket means no redirect
-		if bucket == nil {
-			return nil
+	if page.Redirect != "" {
+		page, err = bl.lookupPage(page.Redirect)
+		if err != nil {
+			return Page{}, err
 		}
+	}
 
-		// the redirect bucket contains only one key, value pair, the title to redirect to
-		bucket.ForEach(func(key, value []byte) error {
-			titleBytes = []byte(EncodeTitle(string(key)))
-			return nil
-		})
-		return nil
-	})
+	page.Redirector = title
 
-	return string(titleBytes), err
+	return page, nil
 }
 
-func (bl *boltLoader) lookupLinks(title string) ([]string, error) {
-	titleBytes := []byte(title)
+func (bl *boltLoader) lookupPage(title string) (Page, error) {
+	page := Page{Title: title}
 
-	// load up the links
-	var links []string
 	err := bl.index.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(titleBytes)
+		bucket := tx.Bucket([]byte(title))
 
-		// no links for this page?
 		if bucket == nil {
-			return errors.New("No entry for title '" + string(titleBytes) + "'")
+			return errors.New("No entry for title '" + title + "'")
 		}
 
-		// else, each key is a link, so grab them all
-		bucket.ForEach(func(key, value []byte) error {
-			links = append(links, string(key))
-			return nil
-		})
+		page.Redirect = string(bucket.Get(redirectKey))
+		page.Links = decodeLinks(bucket.Get(linksKey))
+
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
 
-	return links, nil
+	if err != nil {
+		return Page{}, err
+	} else {
+		return page, nil
+	}
 }
 
 // Blocks new loads from starting, waits for existing loads to complete,
@@ -128,7 +99,6 @@ func (bl *boltLoader) Close() error {
 
 	// then shut down the connections
 	bl.index.Close()
-	bl.redir.Close()
 
 	return nil
 }
@@ -147,18 +117,13 @@ func (bl *boltLoader) isClosing() bool {
 	return bl.closing
 }
 
-func GetBoltPageSaver(indexFilename, redirFilename string) (PageSaver, error) {
+func GetBoltPageSaver(indexFilename string) (PageSaver, error) {
 	index, err := bolt.Open(indexFilename, 0600, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	redir, err := bolt.Open(redirFilename, 0600, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	pageLoader := boltLoader{index, redir, sync.WaitGroup{}, false, sync.Mutex{}}
+	pageLoader := boltLoader{index: index}
 	return &pageLoader, nil
 }
 
@@ -191,8 +156,15 @@ func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
 		return err
 	}
 
-	for _, link := range page.Links {
-		err = bucket.Put([]byte(link), []byte{})
+	if page.Redirect != "" {
+		err = bucket.Put(redirectKey, []byte(page.Redirect))
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(page.Links) != 0 {
+		err = bucket.Put(linksKey, encodeLinks(page.Links))
 		if err != nil {
 			return err
 		}
@@ -201,39 +173,10 @@ func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
 	return nil
 }
 
-func (bl *boltLoader) SaveRedirect(redirect Redirect) error {
-	err := bl.redir.Update(func(tx *bolt.Tx) error {
-		return bl.saveRedirect(tx, redirect)
-	})
-
-	return err
+func encodeLinks(links []string) []byte {
+	return []byte(strings.Join(links, linkSeparator))
 }
 
-func (bl *boltLoader) SaveRedirects(redirects []Redirect) error {
-	err := bl.redir.Update(func(tx *bolt.Tx) error {
-		for _, redirect := range redirects {
-			err := bl.saveRedirect(tx, redirect)
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-
-	return err
-}
-
-func (bl *boltLoader) saveRedirect(tx *bolt.Tx, redirect Redirect) error {
-	bucket, err := tx.CreateBucket([]byte(redirect.Source))
-	if err != nil {
-		return err
-	}
-
-	err = bucket.Put([]byte(redirect.Target), []byte{})
-	if err != nil {
-		return err
-	}
-
-	return nil
+func decodeLinks(encodedLinks []byte) []string {
+	return strings.Split(string(encodedLinks), linkSeparator)
 }
