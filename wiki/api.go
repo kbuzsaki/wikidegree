@@ -77,7 +77,7 @@ func ParseLinks(content string) []string {
 	var links []string
 	for _, match := range matches {
 		link := match[1]
-		link = EncodeTitle(link)
+		link = NormalizeTitle(link)
 		links = append(links, link)
 	}
 
