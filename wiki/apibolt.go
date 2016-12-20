@@ -59,7 +59,6 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 	defer bl.release()
 
 	var page Page
-
 	err := bl.index.View(func(tx *bolt.Tx) error {
 		var viewErr error
 		page, viewErr = bl.loadPageWithRedirect(tx, title)
@@ -74,15 +73,26 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 }
 
 func (bl *boltLoader) LoadPages(titles []string) ([]Page, error) {
-	var pages []Page
+	if err := bl.retain(); err != nil {
+		return nil, err
+	}
+	defer bl.release()
 
-	for _, title := range titles {
-		page, err := bl.LoadPage(title)
-		if err != nil {
-			return nil, err
+	var pages []Page
+	err := bl.index.View(func(tx *bolt.Tx) error {
+		for _, title := range titles {
+			page, err := bl.loadPageWithRedirect(tx, title)
+			if err != nil {
+				return err
+			}
+			pages = append(pages, page)
 		}
 
-		pages = append(pages, page)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
 	return pages, nil
