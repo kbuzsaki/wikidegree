@@ -26,6 +26,27 @@ func TestSaveLoadBasic(t *testing.T) {
 	}
 }
 
+func TestMissingLoad(t *testing.T) {
+	pr := tempPageRepository()
+
+	_, err := pr.LoadPage("Missing")
+
+	if err == nil || err.Error() != "No entry for title 'Missing'" {
+		t.Errorf("Failed to error when loading while closed")
+	}
+}
+
+func TestClosedLoad(t *testing.T) {
+	pr := tempPageRepository()
+
+	pr.Close()
+	_, err := pr.LoadPage("Foo")
+
+	if err == nil || err.Error() != "Connection closed" {
+		t.Errorf("Failed to error when loading while closed")
+	}
+}
+
 func TestSaveLoadRedirect(t *testing.T) {
 	pr := tempPageRepository()
 	redirect := Page{Title: "CatsRedir", Redirect: "Cats"}
