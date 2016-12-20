@@ -176,15 +176,65 @@ func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
 }
 
 func (bl *boltLoader) FirstPage() (Page, error) {
-	return Page{}, errors.New("not implemented")
+	return bl.NextPage("")
 }
 
 func (bl *boltLoader) NextPage(title string) (Page, error) {
-	return Page{}, errors.New("not implemented")
+	pages, err := bl.NextPages(title, 1)
+	if err != nil {
+		return Page{}, err
+	}
+
+	if len(pages) < 1 {
+		return Page{}, nil
+	}
+
+	return pages[0], nil
 }
 
 func (bl *boltLoader) NextPages(title string, count int) ([]Page, error) {
-	return nil, errors.New("not implemented")
+	if count < 1 {
+		return nil, fmt.Errorf("count must be positive, was %d", count)
+	}
+
+	if err := bl.retain(); err != nil {
+		return nil, err
+	}
+	defer bl.release()
+
+	var pages []Page
+	err := bl.index.View(func(tx *bolt.Tx) error {
+		cursor := tx.Cursor()
+
+		//
+		key, val := cursor.Seek([]byte(title))
+		if string(key) == title {
+			key, val = cursor.Next()
+		}
+
+		for ; key != nil; key, val = cursor.Next() {
+			// a nil value means that the key is to a bucket, which is a page
+			if val == nil {
+				page, err := bl.loadPage(tx, string(key))
+				if err != nil {
+					return err
+				}
+
+				pages = append(pages, page)
+				if len(pages) >= count {
+					return nil
+				}
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return pages, nil
 }
 
 // Blocks new loads from starting, waits for existing loads to complete,

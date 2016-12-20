@@ -7,6 +7,13 @@ import (
 	"testing"
 )
 
+var (
+	bones = Page{Title: "Bones", Links: []string{"Dogs", "Skeletons"}}
+	cats  = Page{Title: "Cats", Links: []string{"Dogs", "Mice"}}
+	dogs  = Page{Title: "Dogs", Links: []string{"Bones", "Cats"}}
+	mice  = Page{Title: "Mice", Links: []string{"Cheese", "Cats"}}
+)
+
 func TestSaveLoadBasic(t *testing.T) {
 	pr := tempPageRepository()
 	expected := Page{Title: "Cats", Links: []string{"Dogs", "Mice"}}
@@ -70,23 +77,19 @@ func TestSaveLoadRedirect(t *testing.T) {
 
 func TestBulkSaveLoad(t *testing.T) {
 	pr := tempPageRepository()
-	bones := Page{Title: "Bones", Links: []string{"Dogs", "Skeletons"}}
-	cats := Page{Title: "Cats", Links: []string{"Dogs", "Mice"}}
-	dogs := Page{Title: "Dogs", Links: []string{"Bones", "Cats"}}
-	mice := Page{Title: "Mice", Links: []string{"Cheese", "Cats"}}
 
 	err := pr.SavePages([]Page{bones, cats, dogs})
 	if err != nil {
-		t.Errorf("Redirect SavePages errored with: %s", err)
+		t.Errorf("Bulk SavePages errored with: %s", err)
 	}
 	err = pr.SavePage(mice)
 	if err != nil {
-		t.Errorf("Redirect SavePage errored with: %s", err)
+		t.Errorf("SavePage errored with: %s", err)
 	}
 
 	loadedBones, err := pr.LoadPage("Bones")
 	if err != nil {
-		t.Errorf("Redirect LoadPage errored with: %s", err)
+		t.Errorf("LoadPage errored with: %s", err)
 	}
 	if !reflect.DeepEqual(loadedBones, bones) {
 		t.Errorf("expected: '%#v', actual: '%#v'", bones, loadedBones)
@@ -94,11 +97,65 @@ func TestBulkSaveLoad(t *testing.T) {
 
 	loadedCatsDogsMice, err := pr.LoadPages([]string{"Cats", "Dogs", "Mice"})
 	if err != nil {
-		t.Errorf("Redirect LoadPages errored with: %s", err)
+		t.Errorf("Bulk LoadPages errored with: %s", err)
 	}
 	expected := []Page{cats, dogs, mice}
 	if !reflect.DeepEqual(expected, loadedCatsDogsMice) {
 		t.Errorf("expected: '%#v', actual: '%#v'", expected, loadedCatsDogsMice)
+	}
+}
+
+func TestNextPage(t *testing.T) {
+	pr := tempPageRepository()
+
+	// don't insert alphabetized
+	err := pr.SavePages([]Page{mice, dogs, bones, cats})
+	if err != nil {
+		t.Errorf("Bulk SavePages errored with: %s", err)
+	}
+
+	first, err := pr.FirstPage()
+	if err != nil {
+		t.Errorf("FirstPage errored with: %s", err)
+	}
+	if !reflect.DeepEqual(bones, first) {
+		t.Errorf("expected: '%#v', actual: '%#v'", bones, first)
+	}
+
+	actual, err := pr.NextPage(first.Title)
+	if err != nil {
+		t.Errorf("FirstPage errored with: %s", err)
+	}
+	if !reflect.DeepEqual(cats, actual) {
+		t.Errorf("expected: '%#v', actual: '%#v'", cats, actual)
+	}
+
+	actualPair, err := pr.NextPages(first.Title, 2)
+	if err != nil {
+		t.Errorf("NextPages errored with: %s", err)
+	}
+	expected := []Page{cats, dogs}
+	if !reflect.DeepEqual(expected, actualPair) {
+		t.Errorf("expected: '%#v', actual: '%#v'", expected, actualPair)
+	}
+
+	// test running off the end with NextPages
+	actualThree, err := pr.NextPages(first.Title, 4)
+	if err != nil {
+		t.Errorf("NextPages errored with: %s", err)
+	}
+	expected = []Page{cats, dogs, mice}
+	if !reflect.DeepEqual(expected, actualThree) {
+		t.Errorf("expected: '%#v', actual: '%#v'", expected, actualThree)
+	}
+
+	// test running off the end with NextPage
+	actual, err = pr.NextPage(actualThree[len(actualThree)-1].Title)
+	if err != nil {
+		t.Errorf("NextPage errored with: %s", err)
+	}
+	if !reflect.DeepEqual(Page{}, actual) {
+		t.Errorf("expected: '%#v', actual: '%#v'", Page{}, actual)
 	}
 }
 
