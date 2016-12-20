@@ -30,7 +30,7 @@ func main() {
 	if *bare {
 		title = *bareTitle
 	} else {
-		title = wiki.EncodeTitle(*bareTitle)
+		title = wiki.NormalizeTitle(*bareTitle)
 	}
 
 	inspect(db, title)
