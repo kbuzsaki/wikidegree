@@ -92,8 +92,10 @@ func aggregatePages(wg *sync.WaitGroup, xmlPages <-chan XmlPage, pages chan<- []
 	start := time.Now()
 
 	for xmlPage := range xmlPages {
+		title := wiki.NormalizeTitle(xmlPage.Title)
+		redirect := wiki.NormalizeTitle(xmlPage.Redirect.Title)
 		links := wiki.ParseLinks(xmlPage.Text)
-		page := wiki.Page{Title: xmlPage.Title, Redirect: xmlPage.Redirect.Title, Links: links}
+		page := wiki.Page{Title: title, Redirect: redirect, Links: links}
 		pageBuffer = append(pageBuffer, page)
 
 		if len(pageBuffer) >= bufferMax {

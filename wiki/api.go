@@ -94,7 +94,12 @@ func EncodeTitle(title string) string {
 }
 
 func NormalizeTitle(title string) string {
+	if title == "" {
+		return ""
+	}
+
 	title = strings.ToUpper(title[0:1]) + title[1:]
 	title = strings.Replace(title, " ", "_", -1)
+
 	return title
 }
