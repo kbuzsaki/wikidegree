@@ -61,14 +61,14 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 		return Page{}, errors.New("Connection closed")
 	}
 
-	page, err := bl.lookupPage(title)
+	page, err := bl.loadPage(title)
 	if err != nil {
 		return Page{}, err
 	}
 
 	// check if the title redirects
 	if page.Redirect != "" {
-		page, err = bl.lookupPage(page.Redirect)
+		page, err = bl.loadPage(page.Redirect)
 		if err != nil {
 			return Page{}, err
 		}
@@ -83,7 +83,7 @@ func (bl *boltLoader) LoadPages(titles []string) ([]Page, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (bl *boltLoader) lookupPage(title string) (Page, error) {
+func (bl *boltLoader) loadPage(title string) (Page, error) {
 	page := Page{Title: title}
 
 	err := bl.index.View(func(tx *bolt.Tx) error {
@@ -104,35 +104,6 @@ func (bl *boltLoader) lookupPage(title string) (Page, error) {
 	} else {
 		return page, nil
 	}
-}
-
-// Blocks new loads from starting, waits for existing loads to complete,
-// and then shuts down the db connections
-func (bl *boltLoader) Close() error {
-	// set the closing flag so that no new loads are started
-	bl.setClosing()
-
-	// wait until existing loads are done
-	bl.wg.Wait()
-
-	// then shut down the connections
-	bl.index.Close()
-
-	return nil
-}
-
-func (bl *boltLoader) setClosing() {
-	bl.closeLock.Lock()
-	defer bl.closeLock.Unlock()
-
-	bl.closing = true
-}
-
-func (bl *boltLoader) isClosing() bool {
-	bl.closeLock.Lock()
-	defer bl.closeLock.Unlock()
-
-	return bl.closing
 }
 
 func (bl *boltLoader) SavePage(page Page) error {
@@ -191,6 +162,35 @@ func (bl *boltLoader) NextPage(title string) (Page, error) {
 
 func (bl *boltLoader) NextPages(title string, count int) ([]Page, error) {
 	return nil, errors.New("not implemented")
+}
+
+// Blocks new loads from starting, waits for existing loads to complete,
+// and then shuts down the db connections
+func (bl *boltLoader) Close() error {
+	// set the closing flag so that no new loads are started
+	bl.setClosing()
+
+	// wait until existing loads are done
+	bl.wg.Wait()
+
+	// then shut down the connections
+	bl.index.Close()
+
+	return nil
+}
+
+func (bl *boltLoader) setClosing() {
+	bl.closeLock.Lock()
+	defer bl.closeLock.Unlock()
+
+	bl.closing = true
+}
+
+func (bl *boltLoader) isClosing() bool {
+	bl.closeLock.Lock()
+	defer bl.closeLock.Unlock()
+
+	return bl.closing
 }
 
 func encodeLinks(links []string) []byte {
