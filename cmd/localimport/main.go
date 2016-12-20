@@ -35,13 +35,12 @@ func main() {
 func load(xmlDumpFilename, indexFilename string) {
 	xmlPages := make(chan XmlPage, 1000)
 	pages := make(chan []wiki.Page, 1000)
-	done := make(chan struct{})
 
 	wg := &sync.WaitGroup{}
 	wg.Add(3)
 	go loadPagesFromXml(wg, xmlDumpFilename, xmlPages)
-	go aggregatePages(wg, xmlPages, pages, done)
-	go savePages(wg, indexFilename, pages, done)
+	go aggregatePages(wg, xmlPages, pages)
+	go savePages(wg, indexFilename, pages)
 	wg.Wait()
 }
 
@@ -85,7 +84,7 @@ func loadPagesFromXml(wg *sync.WaitGroup, filename string, xmlPages chan<- XmlPa
 	close(xmlPages)
 }
 
-func aggregatePages(wg *sync.WaitGroup, xmlPages <-chan XmlPage, pages chan<- []wiki.Page, done chan<- struct{}) {
+func aggregatePages(wg *sync.WaitGroup, xmlPages <-chan XmlPage, pages chan<- []wiki.Page) {
 	defer wg.Done()
 
 	var pageBuffer []wiki.Page
@@ -111,10 +110,10 @@ func aggregatePages(wg *sync.WaitGroup, xmlPages <-chan XmlPage, pages chan<- []
 	}
 
 	pages <- pageBuffer
-	done <- struct{}{}
+	close(pages)
 }
 
-func savePages(wg *sync.WaitGroup, indexFilename string, pages <-chan []wiki.Page, done <-chan struct{}) {
+func savePages(wg *sync.WaitGroup, indexFilename string, pages <-chan []wiki.Page) {
 	defer wg.Done()
 
 	pageSaver, err := wiki.GetBoltPageSaver(indexFilename)
@@ -123,16 +122,10 @@ func savePages(wg *sync.WaitGroup, indexFilename string, pages <-chan []wiki.Pag
 	}
 	defer pageSaver.Close()
 
-	remaining := true
-	for remaining {
-		select {
-		case pageBuffer := <-pages:
-			err := pageSaver.SavePages(pageBuffer)
-			if err != nil {
-				log.Fatal(err)
-			}
-		case <-done:
-			remaining = false
+	for pageBuffer := range pages {
+		err := pageSaver.SavePages(pageBuffer)
+		if err != nil {
+			log.Fatal(err)
 		}
 	}
 }
