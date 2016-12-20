@@ -53,13 +53,10 @@ func getBoltConnection(indexFilename string, mode os.FileMode, options *bolt.Opt
 }
 
 func (bl *boltLoader) LoadPage(title string) (Page, error) {
-	// make sure the connections don't close until we're done
-	bl.wg.Add(1)
-	defer bl.wg.Done()
-
-	if bl.isClosing() {
-		return Page{}, errors.New("Connection closed")
+	if err := bl.retain(); err != nil {
+		return Page{}, err
 	}
+	defer bl.release()
 
 	var page Page
 
@@ -207,6 +204,21 @@ func (bl *boltLoader) isClosing() bool {
 	defer bl.closeLock.Unlock()
 
 	return bl.closing
+}
+
+func (bl *boltLoader) retain() error {
+	bl.wg.Add(1)
+
+	if bl.isClosing() {
+		bl.wg.Done()
+		return errors.New("Connection closed")
+	}
+
+	return nil
+}
+
+func (bl *boltLoader) release() {
+	bl.wg.Done()
 }
 
 func encodeLinks(links []string) []byte {
