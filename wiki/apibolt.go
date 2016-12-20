@@ -3,6 +3,7 @@ package wiki
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -10,6 +11,7 @@ import (
 )
 
 const DefaultIndexName = "db/index.db"
+const defaultFileMode = 0600
 
 var redirectKey = []byte("redir")
 var linksKey = []byte("links")
@@ -29,7 +31,19 @@ type boltLoader struct {
 }
 
 func GetBoltPageLoader() (PageLoader, error) {
-	index, err := bolt.Open(DefaultIndexName, 0600, &bolt.Options{ReadOnly: true})
+	return getBoltConnection(DefaultIndexName, defaultFileMode, &bolt.Options{ReadOnly: true})
+}
+
+func GetBoltPageSaver(indexFilename string) (PageSaver, error) {
+	return getBoltConnection(indexFilename, defaultFileMode, nil)
+}
+
+func GetBoltPageRepository(indexFilename string) (PageRepository, error) {
+	return getBoltConnection(indexFilename, defaultFileMode, nil)
+}
+
+func getBoltConnection(indexFilename string, mode os.FileMode, options *bolt.Options) (*boltLoader, error) {
+	index, err := bolt.Open(indexFilename, mode, options)
 	if err != nil {
 		return nil, err
 	}
@@ -63,6 +77,10 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 	page.Redirector = title
 
 	return page, nil
+}
+
+func (bl *boltLoader) LoadPages(titles []string) ([]Page, error) {
+	return nil, errors.New("not implemented")
 }
 
 func (bl *boltLoader) lookupPage(title string) (Page, error) {
@@ -117,16 +135,6 @@ func (bl *boltLoader) isClosing() bool {
 	return bl.closing
 }
 
-func GetBoltPageSaver(indexFilename string) (PageSaver, error) {
-	index, err := bolt.Open(indexFilename, 0600, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	pageLoader := boltLoader{index: index}
-	return &pageLoader, nil
-}
-
 func (bl *boltLoader) SavePage(page Page) error {
 	err := bl.index.Update(func(tx *bolt.Tx) error {
 		return bl.savePage(tx, page)
@@ -171,6 +179,18 @@ func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
 	}
 
 	return nil
+}
+
+func (bl *boltLoader) FirstPage() (Page, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (bl *boltLoader) NextPage(title string) (Page, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (bl *boltLoader) NextPages(title string, count int) ([]Page, error) {
+	return nil, errors.New("not implemented")
 }
 
 func encodeLinks(links []string) []byte {

@@ -33,6 +33,7 @@ type Page struct {
 // Takes the title of the page and returns the Page struct.
 type PageLoader interface {
 	LoadPage(title string) (Page, error)
+	LoadPages(titles []string) ([]Page, error)
 	io.Closer
 }
 
@@ -40,6 +41,19 @@ type PageSaver interface {
 	SavePage(page Page) error
 	SavePages(pages []Page) error
 	io.Closer
+}
+
+type PagePager interface {
+	FirstPage() (Page, error)
+	NextPage(title string) (Page, error)
+	NextPages(title string, count int) ([]Page, error)
+	io.Closer
+}
+
+type PageRepository interface {
+	PageLoader
+	PageSaver
+	PagePager
 }
 
 // Represents a series of page titles/links that take you from one page
