@@ -2,9 +2,9 @@ package wiki
 
 import (
 	"errors"
-	"sync"
-
+	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/boltdb/bolt"
 )
@@ -151,9 +151,9 @@ func (bl *boltLoader) SavePages(pages []Page) error {
 }
 
 func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
-	bucket, err := tx.CreateBucket([]byte(page.Title))
+	bucket, err := tx.CreateBucketIfNotExists([]byte(page.Title))
 	if err != nil {
-		return err
+		return fmt.Errorf("error while creating bucket for title '%s': '%v'", page.Title, err)
 	}
 
 	if page.Redirect != "" {
