@@ -46,6 +46,21 @@ func (wl webLoader) LoadPage(title string) (Page, error) {
 	return Page{}, errors.New(fmt.Sprint("No revisions found for", title))
 }
 
+func (wl webLoader) LoadPages(titles []string) ([]Page, error) {
+	var pages []Page
+
+	for _, title := range titles {
+		page, err := wl.LoadPage(title)
+		if err != nil {
+			return nil, err
+		}
+
+		pages = append(pages, page)
+	}
+
+	return pages, nil
+}
+
 func (wl webLoader) Close() error {
 	return nil
 }

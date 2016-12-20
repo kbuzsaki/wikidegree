@@ -61,49 +61,65 @@ func (bl *boltLoader) LoadPage(title string) (Page, error) {
 		return Page{}, errors.New("Connection closed")
 	}
 
-	page, err := bl.loadPage(title)
+	var page Page
+
+	err := bl.index.View(func(tx *bolt.Tx) error {
+		var viewErr error
+		page, viewErr = bl.loadPageWithRedirect(tx, title)
+		return viewErr
+	})
+
+	if err != nil {
+		return Page{}, err
+	}
+
+	return page, nil
+}
+
+func (bl *boltLoader) LoadPages(titles []string) ([]Page, error) {
+	var pages []Page
+
+	for _, title := range titles {
+		page, err := bl.LoadPage(title)
+		if err != nil {
+			return nil, err
+		}
+
+		pages = append(pages, page)
+	}
+
+	return pages, nil
+}
+
+func (bl *boltLoader) loadPageWithRedirect(tx *bolt.Tx, title string) (Page, error) {
+	page, err := bl.loadPage(tx, title)
 	if err != nil {
 		return Page{}, err
 	}
 
 	// check if the title redirects
 	if page.Redirect != "" {
-		page, err = bl.loadPage(page.Redirect)
+		page, err = bl.loadPage(tx, page.Redirect)
 		if err != nil {
 			return Page{}, err
 		}
+		page.Redirector = title
 	}
-
-	page.Redirector = title
 
 	return page, nil
 }
 
-func (bl *boltLoader) LoadPages(titles []string) ([]Page, error) {
-	return nil, errors.New("not implemented")
-}
+func (bl *boltLoader) loadPage(tx *bolt.Tx, title string) (Page, error) {
+	bucket := tx.Bucket([]byte(title))
 
-func (bl *boltLoader) loadPage(title string) (Page, error) {
-	page := Page{Title: title}
-
-	err := bl.index.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(title))
-
-		if bucket == nil {
-			return errors.New("No entry for title '" + title + "'")
-		}
-
-		page.Redirect = string(bucket.Get(redirectKey))
-		page.Links = decodeLinks(bucket.Get(linksKey))
-
-		return nil
-	})
-
-	if err != nil {
-		return Page{}, err
-	} else {
-		return page, nil
+	if bucket == nil {
+		return Page{}, errors.New("No entry for title '" + title + "'")
 	}
+
+	redirect := string(bucket.Get(redirectKey))
+	links := decodeLinks(bucket.Get(linksKey))
+
+	return Page{Title: title, Redirect: redirect, Links: links}, nil
 }
 
 func (bl *boltLoader) SavePage(page Page) error {
@@ -153,11 +169,11 @@ func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
 }
 
 func (bl *boltLoader) FirstPage() (Page, error) {
-	return nil, errors.New("not implemented")
+	return Page{}, errors.New("not implemented")
 }
 
 func (bl *boltLoader) NextPage(title string) (Page, error) {
-	return nil, errors.New("not implemented")
+	return Page{}, errors.New("not implemented")
 }
 
 func (bl *boltLoader) NextPages(title string, count int) ([]Page, error) {

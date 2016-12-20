@@ -50,10 +50,16 @@ type PagePager interface {
 	io.Closer
 }
 
+// TODO: make this just the union of the above interfaces once https://github.com/golang/go/issues/6977 is fixed
 type PageRepository interface {
-	PageLoader
-	PageSaver
-	PagePager
+	LoadPage(title string) (Page, error)
+	LoadPages(titles []string) ([]Page, error)
+	SavePage(page Page) error
+	SavePages(pages []Page) error
+	FirstPage() (Page, error)
+	NextPage(title string) (Page, error)
+	NextPages(title string, count int) ([]Page, error)
+	io.Closer
 }
 
 // Represents a series of page titles/links that take you from one page
