@@ -70,7 +70,7 @@ func ParseLinks(content string) []string {
 		return []string{}
 	}
 
-	regex, _ := regexp.Compile("\\[\\[(.+?)(\\]\\]|\\||#)")
+	regex, _ := regexp.Compile(`\[\[(.+?)(\]\]|\||#)`)
 
 	matches := regex.FindAllStringSubmatch(content, -1)
 
