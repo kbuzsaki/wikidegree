@@ -170,6 +170,11 @@ func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		err = bucket.Delete(linksKey)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
