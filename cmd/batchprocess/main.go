@@ -73,32 +73,40 @@ func printShortNames(pr wiki.PageRepository, pages []wiki.Page) error {
 }
 
 func cleanDeadLinks(pr wiki.PageRepository, pages []wiki.Page) error {
-	for i := range pages {
-		validLinks, err := getValidLinks(pr, pages[i])
+	var updatedPages []wiki.Page
+
+	for _, page := range pages {
+		validLinks, updated, err := getValidLinks(pr, page)
 		if err != nil {
 			return err
 		}
-		pages[i].Links = validLinks
+
+		if updated {
+			page.Links = validLinks
+			updatedPages = append(updatedPages, page)
+		}
 	}
 
-	return pr.SavePages(pages)
+	return pr.SavePages(updatedPages)
 }
 
-func getValidLinks(pr wiki.PageRepository, page wiki.Page) ([]string, error) {
+func getValidLinks(pr wiki.PageRepository, page wiki.Page) ([]string, bool, error) {
 	var validLinks []string
 
+	updated := false
 	for _, link := range page.Links {
 		_, err := pr.LoadPage(link)
 		if err != nil && !strings.HasPrefix(err.Error(), "No entry") {
-			return nil, err
+			return nil, false, err
 		} else if err != nil {
 			if debug {
 				log.Printf("found dead link %#v in page %#v\n", link, page.Title)
 			}
+			updated = true
 		} else {
 			validLinks = append(validLinks, link)
 		}
 	}
 
-	return validLinks, nil
+	return validLinks, updated, nil
 }
