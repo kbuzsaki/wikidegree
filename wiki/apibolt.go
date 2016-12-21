@@ -15,6 +15,7 @@ const defaultFileMode = 0600
 
 var redirectKey = []byte("redir")
 var linksKey = []byte("links")
+var linkersKey = []byte("linkers")
 
 const linkSeparator = "\n"
 
@@ -125,8 +126,9 @@ func (bl *boltLoader) loadPage(tx *bolt.Tx, title string) (Page, error) {
 
 	redirect := string(bucket.Get(redirectKey))
 	links := decodeLinks(bucket.Get(linksKey))
+	linkers := decodeLinks(bucket.Get(linkersKey))
 
-	return Page{Title: title, Redirect: redirect, Links: links}, nil
+	return Page{Title: title, Redirect: redirect, Links: links, Linkers: linkers}, nil
 }
 
 func (bl *boltLoader) SavePage(page Page) error {
@@ -165,13 +167,27 @@ func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
 		}
 	}
 
-	if page.Links == nil {
-		err = bucket.Delete(linksKey)
+	err = putOrDeleteStringSlice(bucket, linksKey, page.Links)
+	if err != nil {
+		return err
+	}
+
+	err = putOrDeleteStringSlice(bucket, linkersKey, page.Linkers)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func putOrDeleteStringSlice(bucket *bolt.Bucket, key []byte, slice []string) error {
+	if slice == nil {
+		err := bucket.Delete(key)
 		if err != nil {
 			return err
 		}
 	} else {
-		err = bucket.Put(linksKey, encodeLinks(page.Links))
+		err := bucket.Put(key, encodeLinks(slice))
 		if err != nil {
 			return err
 		}

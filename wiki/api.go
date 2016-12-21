@@ -26,7 +26,8 @@ type Page struct {
 	Redirector string   // the original link used to get to the page, usually but not always the same as title
 	Title      string   // the actual title of the page
 	Redirect   string   // the page that this page redirects to
-	Links      []string // the links on the page
+	Links      []string // pages that this page links to
+	Linkers    []string // pages that link to this page
 }
 
 // Represents something that can load wiki pages

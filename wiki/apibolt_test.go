@@ -8,10 +8,10 @@ import (
 )
 
 var (
-	bones = Page{Title: "Bones", Links: []string{"Dogs", "Skeletons"}}
-	cats  = Page{Title: "Cats", Links: []string{"Dogs", "Mice"}}
-	dogs  = Page{Title: "Dogs", Links: []string{"Bones", "Cats"}}
-	mice  = Page{Title: "Mice", Links: []string{"Cheese", "Cats"}}
+	bones = Page{Title: "Bones", Links: []string{"Dogs", "Skeletons"}, Linkers: []string{"Dogs", "Doctors"}}
+	cats  = Page{Title: "Cats", Links: []string{"Dogs", "Mice"}, Linkers: []string{"Dogs", "Mice", "Humans"}}
+	dogs  = Page{Title: "Dogs", Links: []string{"Bones", "Cats"}, Linkers: []string{"Bones", "Cats"}}
+	mice  = Page{Title: "Mice", Links: []string{"Cheese", "Cats"}, Linkers: []string{"Cats"}}
 )
 
 func TestSaveLoadBasic(t *testing.T) {
@@ -34,7 +34,7 @@ func TestSaveLoadBasic(t *testing.T) {
 	}
 
 	pages := []Page{
-		Page{Title: "Cats", Links: []string{"Dogs", "Mice", ""}},
+		Page{Title: "Cats", Links: []string{"Dogs", "Mice", ""}, Linkers: []string{"Dogs", "Humans"}},
 		Page{Title: "Empty", Links: []string{}},
 		Page{Title: "Nil", Links: nil},
 	}
@@ -43,6 +43,7 @@ func TestSaveLoadBasic(t *testing.T) {
 		runTest(page)
 	}
 }
+
 func TestSaveLoadOverwrite(t *testing.T) {
 	pr := tempPageRepository()
 	fullCats := Page{Title: "Cats", Links: []string{"Dogs", "Mice"}}
