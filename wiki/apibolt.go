@@ -165,13 +165,13 @@ func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
 		}
 	}
 
-	if len(page.Links) != 0 {
-		err = bucket.Put(linksKey, encodeLinks(page.Links))
+	if page.Links == nil {
+		err = bucket.Delete(linksKey)
 		if err != nil {
 			return err
 		}
 	} else {
-		err = bucket.Delete(linksKey)
+		err = bucket.Put(linksKey, encodeLinks(page.Links))
 		if err != nil {
 			return err
 		}
@@ -287,9 +287,17 @@ func (bl *boltLoader) release() {
 }
 
 func encodeLinks(links []string) []byte {
+	if len(links) == 0 {
+		return []byte{}
+	}
 	return []byte(strings.Join(links, linkSeparator))
 }
 
 func decodeLinks(encodedLinks []byte) []string {
+	if encodedLinks == nil {
+		return nil
+	} else if len(encodedLinks) == 0 {
+		return []string{}
+	}
 	return strings.Split(string(encodedLinks), linkSeparator)
 }

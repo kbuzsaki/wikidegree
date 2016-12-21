@@ -15,21 +15,65 @@ var (
 )
 
 func TestSaveLoadBasic(t *testing.T) {
-	pr := tempPageRepository()
-	expected := Page{Title: "Cats", Links: []string{"Dogs", "Mice"}}
+	runTest := func(expected Page) {
+		pr := tempPageRepository()
 
-	err := pr.SavePage(expected)
+		err := pr.SavePage(expected)
+		if err != nil {
+			t.Errorf("Basic SavePage errored with: %s", err)
+		}
+
+		actual, err := pr.LoadPage(expected.Title)
+		if err != nil {
+			t.Errorf("Basic LoadPage errored with: %s", err)
+		}
+
+		if !reflect.DeepEqual(expected, actual) {
+			t.Errorf("expected: '%#v', actual: '%#v'", expected, actual)
+		}
+	}
+
+	pages := []Page{
+		Page{Title: "Cats", Links: []string{"Dogs", "Mice", ""}},
+		Page{Title: "Empty", Links: []string{}},
+		Page{Title: "Nil", Links: nil},
+	}
+
+	for _, page := range pages {
+		runTest(page)
+	}
+}
+func TestSaveLoadOverwrite(t *testing.T) {
+	pr := tempPageRepository()
+	fullCats := Page{Title: "Cats", Links: []string{"Dogs", "Mice"}}
+	emptyCats := Page{Title: "Cats", Links: []string{}}
+	fullCatsRedir := Page{Title: "CatsRedir", Redirect: "Cats", Links: []string{"Cats"}}
+	emptyCatsRedir := Page{Title: "CatsRedir", Redirect: "Cats", Links: []string{}}
+
+	err := pr.SavePages([]Page{fullCats, fullCatsRedir})
 	if err != nil {
 		t.Errorf("Basic SavePage errored with: %s", err)
+	}
+	err = pr.SavePages([]Page{emptyCats, emptyCatsRedir})
+	if err != nil {
+		t.Errorf("Overwrite SavePage errored with: %s", err)
 	}
 
 	actual, err := pr.LoadPage("Cats")
 	if err != nil {
-		t.Errorf("Basic LoadPage errored with: %s", err)
+		t.Errorf("Overwrite LoadPage errored with: %s", err)
+	}
+	if !reflect.DeepEqual(emptyCats, actual) {
+		t.Errorf("expected: '%#v', actual: '%#v'", emptyCats, actual)
 	}
 
-	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("expected: '%#v', actual: '%#v'", expected, actual)
+	// use NextPage as a hack to get the direct page value for CatsRedir
+	actual, err = pr.NextPage("Cats")
+	if err != nil {
+		t.Errorf("Overwrite LoadPage errored with: %s", err)
+	}
+	if !reflect.DeepEqual(emptyCatsRedir, actual) {
+		t.Errorf("expected: '%#v', actual: '%#v'", emptyCatsRedir, actual)
 	}
 }
 
