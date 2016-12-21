@@ -8,10 +8,14 @@ import (
 	_ "net/http/pprof"
 	"strings"
 
+	"sync"
+
 	"github.com/kbuzsaki/wikidegree/wiki"
 )
 
+const printThresh = 1000000
 const defaultBatchSize = 1000
+const defaultConcurrency = 1
 
 var debug bool
 
@@ -19,6 +23,7 @@ func main() {
 	flag.BoolVar(&debug, "debug", false, "print debug output")
 	dbFilename := flag.String("db", wiki.DefaultIndexName, "the boltdb file")
 	batchSize := flag.Int("batch", defaultBatchSize, "number of pages to pass to the processing function at a time")
+	concurrency := flag.Int("concurrency", defaultConcurrency, "number of goroutines to use for processing")
 	flag.Parse()
 
 	go func() {
@@ -30,7 +35,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = process(pr, *batchSize, cleanDeadLinks)
+	err = process(pr, *batchSize, *concurrency, cleanDeadLinks)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -38,20 +43,33 @@ func main() {
 
 type processor func(pr wiki.PageRepository, pages []wiki.Page) error
 
-func process(pr wiki.PageRepository, batchSize int, f processor) error {
+func process(pr wiki.PageRepository, batchSize int, concurrency int, f processor) error {
 	pageBuffer, err := pr.NextPages("", batchSize)
 	if err != nil {
 		return err
 	}
 
+	wg := &sync.WaitGroup{}
+	pageBuffers := make(chan []wiki.Page, 2*concurrency)
+	errs := make(chan error)
+
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go processWorker(pr, f, wg, pageBuffers, errs)
+	}
+
 	counter := 0
 	for len(pageBuffer) != 0 {
-		if debug {
+		if debug && counter%printThresh == 0 {
 			log.Println("processed", counter)
 		}
 
-		err = f(pr, pageBuffer)
-		if err != nil {
+		select {
+		case pageBuffers <- pageBuffer:
+			// pass
+		case err := <-errs:
+			close(pageBuffers)
+			close(errs)
 			return err
 		}
 
@@ -59,7 +77,18 @@ func process(pr wiki.PageRepository, batchSize int, f processor) error {
 		pageBuffer, err = pr.NextPages(pageBuffer[len(pageBuffer)-1].Title, batchSize)
 	}
 
+	wg.Wait()
 	return nil
+}
+
+func processWorker(pr wiki.PageRepository, f processor, wg *sync.WaitGroup, pageBuffers <-chan []wiki.Page, errs chan<- error) {
+	defer wg.Done()
+	for pageBuffer := range pageBuffers {
+		err := f(pr, pageBuffer)
+		if err != nil {
+			errs <- err
+		}
+	}
 }
 
 func printShortNames(pr wiki.PageRepository, pages []wiki.Page) error {
