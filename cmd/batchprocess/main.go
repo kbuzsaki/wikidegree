@@ -35,10 +35,22 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = process(pr, *batchSize, *concurrency, cleanDeadLinks)
+	maxChan := make(chan wiki.Page)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go foldMaxLinks(wg, maxChan)
+
+	procFn := func(pr wiki.PageRepository, pages []wiki.Page) error {
+		return findMaxLinks(maxChan, pr, pages)
+	}
+
+	err = process(pr, *batchSize, *concurrency, procFn)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	wg.Wait()
 }
 
 type processor func(pr wiki.PageRepository, pages []wiki.Page) error
@@ -138,4 +150,28 @@ func getValidLinks(pr wiki.PageRepository, page wiki.Page) ([]string, bool, erro
 	}
 
 	return validLinks, updated, nil
+}
+
+func findMaxLinks(output chan<- wiki.Page, pr wiki.PageRepository, pages []wiki.Page) error {
+	maxLinksPage := wiki.Page{}
+	for _, page := range pages {
+		if len(page.Links) > len(maxLinksPage.Links) {
+			maxLinksPage = page
+		}
+	}
+
+	output <- maxLinksPage
+	return nil
+}
+
+func foldMaxLinks(wg *sync.WaitGroup, input <-chan wiki.Page) {
+	defer wg.Done()
+
+	maxLinksPage := wiki.Page{}
+	for page := range input {
+		if len(page.Links) > len(maxLinksPage.Links) {
+			log.Printf("Found new max page (%d): %#v\n", len(page.Links), page)
+			maxLinksPage = page
+		}
+	}
 }
