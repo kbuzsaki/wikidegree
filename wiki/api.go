@@ -67,6 +67,9 @@ type PageRepository interface {
 type TitlePath []string
 
 func (titlePath TitlePath) Head() string {
+	if len(titlePath) == 0 {
+		return ""
+	}
 	return titlePath[len(titlePath)-1]
 }
 
