@@ -14,7 +14,6 @@ package wiki
 import (
 	"context"
 	"io"
-	"net/url"
 	"regexp"
 	"strings"
 )
@@ -103,15 +102,6 @@ func ParseLinks(content string) []string {
 	}
 
 	return links
-}
-
-// Helper function that formats and encodes a page title for web lookup
-func EncodeTitle(title string) string {
-	// the first character of the string is case insensitive,
-	// but all the rest is *sensitive*
-	title = NormalizeTitle(title)
-	title = url.QueryEscape(title)
-	return title
 }
 
 func NormalizeTitle(title string) string {

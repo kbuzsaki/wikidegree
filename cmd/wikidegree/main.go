@@ -82,8 +82,8 @@ func getParameters() (parameters, error) {
 		return parameters{}, fmt.Errorf("Expected exactly 2 arguments (start and end), found %d", flag.NArg())
 	}
 	args := flag.Args()
-	start := wiki.EncodeTitle(args[0])
-	end := wiki.EncodeTitle(args[1])
+	start := wiki.NormalizeTitle(args[0])
+	end := wiki.NormalizeTitle(args[1])
 
 	return parameters{*sourcePtr, *algorithmPtr, start, end, *verbosePtr}, nil
 }

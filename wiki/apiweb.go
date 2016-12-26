@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 )
 
 const wikiBaseUrl = "https://en.wikipedia.org/w/api.php"
@@ -66,7 +67,7 @@ func (wl webLoader) Close() error {
 }
 
 func (wl webLoader) loadPageContentFromApi(title string) (body []byte, err error) {
-	url := wl.pageUrl + title
+	url := wl.pageUrl + url.QueryEscape(title)
 	response, err := http.Get(url)
 	if err != nil {
 		return
