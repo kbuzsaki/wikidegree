@@ -258,6 +258,45 @@ func (bl *boltLoader) NextPages(title string, count int) ([]Page, error) {
 	return pages, nil
 }
 
+func (bl *boltLoader) NextTitles(title string, count int) ([]string, error) {
+	if count < 1 {
+		return nil, fmt.Errorf("count must be positive, was %d", count)
+	}
+
+	if err := bl.retain(); err != nil {
+		return nil, err
+	}
+	defer bl.release()
+
+	var titles []string
+	err := bl.index.View(func(tx *bolt.Tx) error {
+		cursor := tx.Cursor()
+
+		key, val := cursor.Seek([]byte(title))
+		if string(key) == title {
+			key, val = cursor.Next()
+		}
+
+		for ; key != nil; key, val = cursor.Next() {
+			// a nil value means that the key is to a bucket, which is a page
+			if val == nil {
+				titles = append(titles, string(key))
+				if len(titles) >= count {
+					return nil
+				}
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return titles, nil
+}
+
 // Blocks new loads from starting, waits for existing loads to complete,
 // and then shuts down the db connections
 func (bl *boltLoader) Close() error {

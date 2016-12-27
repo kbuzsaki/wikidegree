@@ -59,6 +59,7 @@ type PageRepository interface {
 	FirstPage() (Page, error)
 	NextPage(title string) (Page, error)
 	NextPages(title string, count int) ([]Page, error)
+	NextTitles(title string, count int) ([]string, error)
 	io.Closer
 }
 
