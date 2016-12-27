@@ -25,7 +25,7 @@ type Config struct {
 func RunJob(pr wiki.PageRepository, processor PageProcessor, config Config) error {
 	wg := &sync.WaitGroup{}
 	titleBuffers := make(chan []string, 2*config.Concurrency)
-	errs := make(chan error)
+	errs := make(chan error, config.Concurrency)
 
 	err := processor.Setup()
 	if err != nil {
@@ -40,7 +40,6 @@ func RunJob(pr wiki.PageRepository, processor PageProcessor, config Config) erro
 	err = runJob(pr, config, titleBuffers, errs)
 	if err != nil {
 		close(titleBuffers)
-		close(errs)
 		return err
 	}
 
@@ -84,6 +83,7 @@ func jobWorker(wg *sync.WaitGroup, pr wiki.PageRepository, processor PageProcess
 	for titleBuffer := range titleBuffers {
 		pageBuffer, err := pr.LoadPages(titleBuffer)
 		if err != nil {
+			log.Println("error loading pages:", err)
 			errs <- err
 			return
 		}
@@ -91,6 +91,7 @@ func jobWorker(wg *sync.WaitGroup, pr wiki.PageRepository, processor PageProcess
 		for _, page := range pageBuffer {
 			err := processor.Process(page)
 			if err != nil {
+				log.Println("error processing page:", err)
 				errs <- err
 				return
 			}
