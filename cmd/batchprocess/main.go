@@ -52,7 +52,10 @@ func main() {
 	go savePages(wg, pr, pageBuffers)
 	wg.Add(1)
 
-	batch.RunJob(pr, processor, config)
+	err = batch.RunJob(pr, processor, config)
+	if err != nil {
+		log.Fatal("error running batch job:", err)
+	}
 
 	wg.Wait()
 }
