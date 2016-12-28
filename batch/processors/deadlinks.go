@@ -47,7 +47,7 @@ func (cl *deadLinkFilter) getValidLinks(page wiki.Page) ([]string, bool, error) 
 	for _, link := range page.Links {
 		_, err := cl.pr.LoadPage(link)
 
-		if err != nil && !strings.HasPrefix(err.Error(), "No entry") {
+		if err != nil && !strings.HasPrefix(err.Error(), "error loading") {
 			return nil, false, err
 		} else if err != nil {
 			if cl.config.Debug {

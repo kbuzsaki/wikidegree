@@ -55,7 +55,7 @@ func main() {
 
 	err = batch.RunJob(pr, processor, config)
 	if err != nil {
-		log.Fatal("error running batch job:", err)
+		log.Fatal("error running batch job: ", err)
 	}
 
 	wg.Wait()

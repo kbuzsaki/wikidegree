@@ -109,7 +109,7 @@ func (bl *boltLoader) loadPageWithRedirect(tx *bolt.Tx, title string) (Page, err
 	if page.Redirect != "" {
 		page, err = bl.loadPage(tx, page.Redirect)
 		if err != nil {
-			return Page{}, fmt.Errorf("error redirecting from %#v to %#v: %s", title, page.Redirect, err)
+			return Page{}, fmt.Errorf("error loading redirect from %#v to %#v: %s", title, page.Redirect, err)
 		}
 		page.Redirector = title
 	}
