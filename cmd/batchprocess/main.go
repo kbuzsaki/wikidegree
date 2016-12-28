@@ -12,7 +12,6 @@ import (
 	"github.com/kbuzsaki/wikidegree/wiki"
 )
 
-const printThresh = 10000
 const saveBufferSize = 10000
 
 const defaultBatchSize = 10000
@@ -67,7 +66,7 @@ func aggregatePages(in <-chan wiki.Page, out chan<- []wiki.Page) {
 	for page := range in {
 		pageBuffer = append(pageBuffer, page)
 
-		if len(pageBuffer) > saveBufferSize {
+		if len(pageBuffer) >= saveBufferSize {
 			out <- pageBuffer
 			pageBuffer = nil
 		}
@@ -87,7 +86,7 @@ func savePages(wg *sync.WaitGroup, config batch.Config, pr wiki.PageRepository, 
 		}
 
 		counter += len(pageBuffer)
-		if config.Debug && counter%printThresh == 0 {
+		if config.Debug {
 			log.Println("saved", counter)
 		}
 	}
