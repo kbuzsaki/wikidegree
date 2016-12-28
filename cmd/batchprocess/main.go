@@ -12,6 +12,7 @@ import (
 	"github.com/kbuzsaki/wikidegree/wiki"
 )
 
+const printThresh = 10000
 const saveBufferSize = 10000
 
 const defaultBatchSize = 10000
@@ -40,8 +41,8 @@ func main() {
 	}
 
 	wg := &sync.WaitGroup{}
-	pages := make(chan wiki.Page, defaultBatchSize)
-	pageBuffers := make(chan []wiki.Page, defaultBatchSize)
+	pages := make(chan wiki.Page, (config.BatchSize * config.Concurrency) / 2)
+	pageBuffers := make(chan []wiki.Page, config.BatchSize)
 
 	processor, err := processors.NewDeadLinkFilterer(config, pr, pages)
 	if err != nil {
@@ -49,7 +50,7 @@ func main() {
 	}
 
 	go aggregatePages(pages, pageBuffers)
-	go savePages(wg, pr, pageBuffers)
+	go savePages(wg, config, pr, pageBuffers)
 	wg.Add(1)
 
 	err = batch.RunJob(pr, processor, config)
@@ -75,13 +76,19 @@ func aggregatePages(in <-chan wiki.Page, out chan<- []wiki.Page) {
 	close(out)
 }
 
-func savePages(wg *sync.WaitGroup, pr wiki.PageRepository, in <-chan []wiki.Page) {
+func savePages(wg *sync.WaitGroup, config batch.Config, pr wiki.PageRepository, in <-chan []wiki.Page) {
 	defer wg.Done()
 
+	counter := 0
 	for pageBuffer := range in {
 		err := pr.SavePages(pageBuffer)
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		counter += len(pageBuffer)
+		if config.Debug && counter%printThresh == 0 {
+			log.Println("saved", counter)
 		}
 	}
 }
