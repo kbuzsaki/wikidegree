@@ -113,6 +113,8 @@ func runJob(pr wiki.PageRepository, config Config, titleBuffers chan<- []string,
 		}
 	}
 
+	close(titleBuffers)
+
 	return nil
 }
 
