@@ -39,6 +39,30 @@ func main() {
 		Debug:       *debug,
 	}
 
+	doFilterDeadLinks(config, pr)
+}
+
+func doFilterDeadPages(config batch.Config, pr wiki.PageRepository) {
+	wg := &sync.WaitGroup{}
+	deadTitles := make(chan string, (config.BatchSize * config.Concurrency) / 2)
+
+	processor, err := processors.NewDeadTitleFilterer(config, pr, deadTitles)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go deleteTitles(wg, config, pr, deadTitles)
+	wg.Add(1)
+
+	err = batch.RunTitleJob(pr, processor, config)
+	if err != nil {
+		log.Fatal("error running batch job: ", err)
+	}
+
+	wg.Wait()
+}
+
+func doFilterDeadLinks(config batch.Config, pr wiki.PageRepository) {
 	wg := &sync.WaitGroup{}
 	pages := make(chan wiki.Page, (config.BatchSize * config.Concurrency) / 2)
 	pageBuffers := make(chan []wiki.Page, config.BatchSize)
@@ -52,7 +76,7 @@ func main() {
 	go savePages(wg, config, pr, pageBuffers)
 	wg.Add(1)
 
-	err = batch.RunJob(pr, processor, config)
+	err = batch.RunPageJob(pr, processor, config)
 	if err != nil {
 		log.Fatal("error running batch job: ", err)
 	}
@@ -88,6 +112,23 @@ func savePages(wg *sync.WaitGroup, config batch.Config, pr wiki.PageRepository, 
 		counter += len(pageBuffer)
 		if config.Debug {
 			log.Println("saved", counter)
+		}
+	}
+}
+
+func deleteTitles(wg *sync.WaitGroup, config batch.Config, pr wiki.PageRepository, in <-chan string) {
+	defer wg.Done()
+
+	counter := 0
+	for title := range in {
+		err := pr.DeleteTitle(title)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		counter++
+		if config.Debug {
+			log.Printf("deleted title %#v, (%d)\n", title, counter)
 		}
 	}
 }

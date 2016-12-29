@@ -10,6 +10,12 @@ import (
 
 const printThresh = 10000
 
+type TitleProcessor interface {
+	Setup() error
+	ProcessTitle(title string) error
+	Teardown() error
+}
+
 type PageProcessor interface {
 	Setup() error
 	ProcessPage(page wiki.Page) error
@@ -22,19 +28,15 @@ type Config struct {
 	Debug       bool
 }
 
-func RunJob(pr wiki.PageRepository, processor PageProcessor, config Config) error {
-	wg := &sync.WaitGroup{}
-	titleBuffers := make(chan []string, 2*config.Concurrency)
-	errs := make(chan error, config.Concurrency)
-
-	err := processor.Setup()
+func RunTitleJob(pr wiki.PageRepository, processor TitleProcessor, config Config) error {
+	wg, titleBuffers, errs, err := doSetup(config, processor.Setup)
 	if err != nil {
 		return err
 	}
 
 	for i := 0; i < config.Concurrency; i++ {
 		wg.Add(1)
-		go jobWorker(wg, pr, processor, titleBuffers, errs)
+		go titleJobWorker(wg, pr, processor, titleBuffers, errs)
 	}
 
 	err = runJob(pr, config, titleBuffers, errs)
@@ -42,7 +44,6 @@ func RunJob(pr wiki.PageRepository, processor PageProcessor, config Config) erro
 		close(titleBuffers)
 		return err
 	}
-
 	wg.Wait()
 
 	err = processor.Teardown()
@@ -51,6 +52,44 @@ func RunJob(pr wiki.PageRepository, processor PageProcessor, config Config) erro
 	}
 
 	return nil
+}
+
+func RunPageJob(pr wiki.PageRepository, processor PageProcessor, config Config) error {
+	wg, titleBuffers, errs, err := doSetup(config, processor.Setup)
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < config.Concurrency; i++ {
+		wg.Add(1)
+		go pageJobWorker(wg, pr, processor, titleBuffers, errs)
+	}
+
+	err = runJob(pr, config, titleBuffers, errs)
+	if err != nil {
+		close(titleBuffers)
+		return err
+	}
+	wg.Wait()
+
+	err = processor.Teardown()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func doSetup(config Config, setup func() error) (*sync.WaitGroup, chan []string, chan error, error) {
+	err := setup()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	wg := &sync.WaitGroup{}
+	titleBuffers := make(chan []string, 2*config.Concurrency)
+	errs := make(chan error, config.Concurrency)
+	return wg, titleBuffers, errs, nil
 }
 
 func runJob(pr wiki.PageRepository, config Config, titleBuffers chan<- []string, errs <-chan error) error {
@@ -77,7 +116,22 @@ func runJob(pr wiki.PageRepository, config Config, titleBuffers chan<- []string,
 	return nil
 }
 
-func jobWorker(wg *sync.WaitGroup, pr wiki.PageRepository, processor PageProcessor, titleBuffers <-chan []string, errs chan<- error) {
+func titleJobWorker(wg *sync.WaitGroup, pr wiki.PageRepository, processor TitleProcessor, titleBuffers <-chan []string, errs chan<- error) {
+	defer wg.Done()
+
+	for titleBuffer := range titleBuffers {
+		for _, title := range titleBuffer {
+			err := processor.ProcessTitle(title)
+			if err != nil {
+				log.Println("error processing title:", err)
+				errs <- err
+				return
+			}
+		}
+	}
+}
+
+func pageJobWorker(wg *sync.WaitGroup, pr wiki.PageRepository, processor PageProcessor, titleBuffers <-chan []string, errs chan<- error) {
 	defer wg.Done()
 
 	for titleBuffer := range titleBuffers {
