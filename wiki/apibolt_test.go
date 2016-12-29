@@ -205,6 +205,25 @@ func TestNextPage(t *testing.T) {
 	}
 }
 
+func TestDeleteTitle(t *testing.T) {
+	pr := tempPageRepository()
+
+	err := pr.SavePage(cats)
+	if err != nil {
+		t.Errorf("SavePage errored with: %s", err)
+	}
+
+	err = pr.DeleteTitle(cats.Title)
+	if err != nil {
+		t.Errorf("Failed to DeleteTitle, errored with: %s", err)
+	}
+
+	_, err = pr.LoadPage(cats.Title)
+	if err == nil || !strings.Contains(err.Error(), "No entry for title 'Cats'") {
+		t.Errorf("Failed to indicate deleted page was missing (err: %#v)", err)
+	}
+}
+
 func tempPageRepository() PageRepository {
 	pr, err := GetBoltPageRepository(tempfile())
 	if err != nil {

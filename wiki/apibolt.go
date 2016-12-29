@@ -298,6 +298,19 @@ func (bl *boltLoader) NextTitles(title string, count int) ([]string, error) {
 	return titles, nil
 }
 
+func (bl *boltLoader) DeleteTitle(title string) error {
+	if err := bl.retain(); err != nil {
+		return err
+	}
+	defer bl.release()
+
+	err := bl.index.Update(func(tx *bolt.Tx) error {
+		return tx.DeleteBucket([]byte(title))
+	})
+
+	return err
+}
+
 // Blocks new loads from starting, waits for existing loads to complete,
 // and then shuts down the db connections
 func (bl *boltLoader) Close() error {
