@@ -12,7 +12,7 @@ const printThresh = 10000
 
 type PageProcessor interface {
 	Setup() error
-	Process(page wiki.Page) error
+	ProcessPage(page wiki.Page) error
 	Teardown() error
 }
 
@@ -89,7 +89,7 @@ func jobWorker(wg *sync.WaitGroup, pr wiki.PageRepository, processor PageProcess
 		}
 
 		for _, page := range pageBuffer {
-			err := processor.Process(page)
+			err := processor.ProcessPage(page)
 			if err != nil {
 				log.Println("error processing page:", err)
 				errs <- err

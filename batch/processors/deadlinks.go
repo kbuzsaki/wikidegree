@@ -21,7 +21,7 @@ func (cl *deadLinkFilter) Setup() error {
 	return nil
 }
 
-func (cl *deadLinkFilter) Process(page wiki.Page) error {
+func (cl *deadLinkFilter) ProcessPage(page wiki.Page) error {
 	validLinks, updated, err := cl.getValidLinks(page)
 	if err != nil {
 		return err
