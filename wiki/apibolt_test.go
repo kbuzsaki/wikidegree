@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"strings"
 )
 
 var (
@@ -83,8 +84,8 @@ func TestMissingLoad(t *testing.T) {
 
 	_, err := pr.LoadPage("Missing")
 
-	if err == nil || err.Error() != "No entry for title 'Missing'" {
-		t.Errorf("Failed to error when loading while closed")
+	if err == nil || !strings.Contains(err.Error(), "No entry for title 'Missing'") {
+		t.Errorf("Failed to indicate missing page was missing (err: %#v)", err)
 	}
 }
 
