@@ -44,7 +44,7 @@ func main() {
 
 func doFilterDeadPages(config batch.Config, pr wiki.PageRepository) {
 	wg := &sync.WaitGroup{}
-	deadTitles := make(chan string, (config.BatchSize * config.Concurrency) / 2)
+	deadTitles := make(chan string, (config.BatchSize*config.Concurrency)/2)
 
 	processor, err := processors.NewDeadTitleFilterer(config, pr, deadTitles)
 	if err != nil {
@@ -64,7 +64,7 @@ func doFilterDeadPages(config batch.Config, pr wiki.PageRepository) {
 
 func doFilterDeadLinks(config batch.Config, pr wiki.PageRepository) {
 	wg := &sync.WaitGroup{}
-	pages := make(chan wiki.Page, (config.BatchSize * config.Concurrency) / 2)
+	pages := make(chan wiki.Page, (config.BatchSize*config.Concurrency)/2)
 	pageBuffers := make(chan []wiki.Page, 2*config.Concurrency)
 
 	processor, err := processors.NewDeadLinkFilterer(config, pr, pages)

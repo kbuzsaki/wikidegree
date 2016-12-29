@@ -4,8 +4,8 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
-	"testing"
 	"strings"
+	"testing"
 )
 
 var (
