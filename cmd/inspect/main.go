@@ -15,6 +15,7 @@ func main() {
 	dbFilename := flag.String("db", wiki.DefaultIndexName, "the boltdb file")
 	bareTitle := flag.String("title", "", "")
 	bare := flag.Bool("bare", false, "")
+	limit := flag.Int("limit", -1, "")
 	flag.Parse()
 
 	go func() {
@@ -33,10 +34,10 @@ func main() {
 		title = wiki.NormalizeTitle(*bareTitle)
 	}
 
-	inspect(db, title)
+	inspect(db, title, *limit)
 }
 
-func inspect(db *bolt.DB, title string) {
+func inspect(db *bolt.DB, title string, limit int) {
 	db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(title))
 
@@ -46,10 +47,25 @@ func inspect(db *bolt.DB, title string) {
 		}
 
 		fmt.Printf("title: '%s'\n", title)
-		bucket.ForEach(func(key, value []byte) error {
-			fmt.Printf("key: %#v, value: %#v\n", string(key), string(value))
-			return nil
-		})
+		dump(bucket, limit, "")
+
+		return nil
+	})
+}
+
+func dump(bucket *bolt.Bucket, limit int, prefix string) {
+	bucket.ForEach(func(key, val []byte) error {
+		if val == nil {
+			fmt.Printf("%sbucket: %#v\n", prefix, string(key))
+			dump(bucket.Bucket(key), limit, prefix + "\t")
+		} else {
+			stringVal := string(val)
+			if limit > 0 && len(stringVal) > limit {
+				stringVal = stringVal[:limit]
+			}
+
+			fmt.Printf("%skey: %#v, value: %#v\n", prefix, string(key), stringVal)
+		}
 
 		return nil
 	})
