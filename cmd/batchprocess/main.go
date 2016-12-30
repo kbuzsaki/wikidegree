@@ -97,7 +97,7 @@ func doBlobReverseLinks(config batch.Config, pr wiki.PageRepository) {
 	}
 
 	go helpers.AggregatePageBlobs(saveBufferSize, pages, pageBuffers)
-	go consumers.SavePageBuffers(wg, config, pr, pageBuffers)
+	go consumers.SavePageBufferBlobs(wg, config, pr, pageBuffers)
 	wg.Add(1)
 
 	err = batch.RunPageJob(pr, processor, config)

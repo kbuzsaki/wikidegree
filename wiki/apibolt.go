@@ -215,6 +215,39 @@ func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
 	return nil
 }
 
+func (bl *boltLoader) SavePageBlobs(pages []Page) error {
+	err := bl.index.Update(func(tx *bolt.Tx) error {
+		for _, page := range pages {
+			err := bl.savePageBlob(tx, page)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return err
+}
+
+func (bl *boltLoader) savePageBlob(tx *bolt.Tx, page Page) error {
+	bucket, err := tx.CreateBucketIfNotExists([]byte(page.Title))
+	if err != nil {
+		return fmt.Errorf("error while creating bucket for title '%s': '%v'", page.Title, err)
+	}
+
+	if len(page.Blob) != 0 {
+		blobBucket, err := bucket.CreateBucketIfNotExists(blobBucketKey)
+		if err != nil {
+			return err
+		}
+
+		putOrDeleteBlobEntries(blobBucket, page.Blob)
+	}
+
+	return nil
+}
+
 func putOrDelete(bucket *bolt.Bucket, key []byte, val []byte) error {
 	if val == nil {
 		err := bucket.Delete(key)

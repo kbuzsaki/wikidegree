@@ -67,6 +67,7 @@ type PageRepository interface {
 	LoadPages(titles []string) ([]Page, error)
 	SavePage(page Page) error
 	SavePages(pages []Page) error
+	SavePageBlobs(pages []Page) error
 	FirstPage() (Page, error)
 	NextPage(title string) (Page, error)
 	NextPages(title string, count int) ([]Page, error)
