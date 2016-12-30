@@ -125,7 +125,7 @@ func (bl *boltLoader) loadPage(tx *bolt.Tx, title string) (Page, error) {
 		return Page{}, errors.New("No entry for title '" + title + "'")
 	}
 
-	redirect := string(bucket.Get(redirectKey))
+	redirect := decodeTitle(bucket.Get(redirectKey))
 	links := decodeLinks(bucket.Get(linksKey))
 	linkers := decodeLinks(bucket.Get(linkersKey))
 
@@ -161,19 +161,17 @@ func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
 		return fmt.Errorf("error while creating bucket for title '%s': '%v'", page.Title, err)
 	}
 
-	if page.Redirect != "" {
-		err = bucket.Put(redirectKey, []byte(page.Redirect))
-		if err != nil {
-			return err
-		}
-	}
-
-	err = putOrDeleteStringSlice(bucket, linksKey, page.Links)
+	err = putOrDelete(bucket, redirectKey, encodeTitle(page.Redirect))
 	if err != nil {
 		return err
 	}
 
-	err = putOrDeleteStringSlice(bucket, linkersKey, page.Linkers)
+	err = putOrDelete(bucket, linksKey, encodeLinks(page.Links))
+	if err != nil {
+		return err
+	}
+
+	err = putOrDelete(bucket, linkersKey, encodeLinks(page.Linkers))
 	if err != nil {
 		return err
 	}
@@ -181,14 +179,14 @@ func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
 	return nil
 }
 
-func putOrDeleteStringSlice(bucket *bolt.Bucket, key []byte, slice []string) error {
-	if slice == nil {
+func putOrDelete(bucket *bolt.Bucket, key []byte, val []byte) error {
+	if val == nil {
 		err := bucket.Delete(key)
 		if err != nil {
 			return err
 		}
 	} else {
-		err := bucket.Put(key, encodeLinks(slice))
+		err := bucket.Put(key, val)
 		if err != nil {
 			return err
 		}
@@ -355,8 +353,27 @@ func (bl *boltLoader) release() {
 	bl.wg.Done()
 }
 
+// TODO: use these helpers for the actual page title, not just redirects
+func encodeTitle(title string) []byte {
+	if title == "" {
+		return nil
+	}
+
+	return []byte(title)
+}
+
+func decodeTitle(encodedTitle []byte) string {
+	if len(encodedTitle) == 0 {
+		return ""
+	}
+
+	return string(encodedTitle)
+}
+
 func encodeLinks(links []string) []byte {
-	if len(links) == 0 {
+	if links == nil {
+		return nil
+	} else if len(links) == 0 {
 		return []byte{}
 	}
 	return []byte(strings.Join(links, linkSeparator))
