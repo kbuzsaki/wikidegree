@@ -84,6 +84,28 @@ func doFilterDeadLinks(config batch.Config, pr wiki.PageRepository) {
 	wg.Wait()
 }
 
+func doBlobReverseLinks(config batch.Config, pr wiki.PageRepository) {
+	wg := &sync.WaitGroup{}
+	pages := make(chan wiki.Page, (config.BatchSize*config.Concurrency)/2)
+	pageBuffers := make(chan []wiki.Page, 2*config.Concurrency)
+
+	processor, err := processors.NewBlobReverseLinker(config, pr, pages)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go aggregatePages(pages, pageBuffers)
+	go savePages(wg, config, pr, pageBuffers)
+	wg.Add(1)
+
+	err = batch.RunPageJob(pr, processor, config)
+	if err != nil {
+		log.Fatal("error running batch job: ", err)
+	}
+
+	wg.Wait()
+}
+
 func aggregatePages(in <-chan wiki.Page, out chan<- []wiki.Page) {
 	var pageBuffer []wiki.Page
 

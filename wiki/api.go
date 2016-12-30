@@ -32,8 +32,12 @@ type Page struct {
 
 type Blob map[string][]byte
 
-func (blob Blob) Set(key string, val []byte) {
-	blob[key] = val
+func (page *Page) SetBlob(key string, val []byte) {
+	if page.Blob == nil {
+		page.Blob = make(Blob)
+	}
+
+	page.Blob[key] = val
 }
 
 // Represents something that can load wiki pages
