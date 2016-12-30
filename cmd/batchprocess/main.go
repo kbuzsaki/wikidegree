@@ -10,6 +10,8 @@ import (
 	"github.com/kbuzsaki/wikidegree/batch"
 	"github.com/kbuzsaki/wikidegree/batch/processors"
 	"github.com/kbuzsaki/wikidegree/wiki"
+	"github.com/kbuzsaki/wikidegree/batch/consumers"
+	"github.com/kbuzsaki/wikidegree/batch/helpers"
 )
 
 const saveBufferSize = 10000
@@ -51,7 +53,7 @@ func doFilterDeadPages(config batch.Config, pr wiki.PageRepository) {
 		log.Fatal(err)
 	}
 
-	go deleteTitles(wg, config, pr, deadTitles)
+	go consumers.DeleteTitles(wg, config, pr, deadTitles)
 	wg.Add(1)
 
 	err = batch.RunTitleJob(pr, processor, config)
@@ -72,8 +74,8 @@ func doFilterDeadLinks(config batch.Config, pr wiki.PageRepository) {
 		log.Fatal(err)
 	}
 
-	go aggregatePages(pages, pageBuffers)
-	go savePages(wg, config, pr, pageBuffers)
+	go helpers.AggregatePages(saveBufferSize, pages, pageBuffers)
+	go consumers.SavePageBuffers(wg, config, pr, pageBuffers)
 	wg.Add(1)
 
 	err = batch.RunPageJob(pr, processor, config)
@@ -94,8 +96,8 @@ func doBlobReverseLinks(config batch.Config, pr wiki.PageRepository) {
 		log.Fatal(err)
 	}
 
-	go aggregatePages(pages, pageBuffers)
-	go savePages(wg, config, pr, pageBuffers)
+	go helpers.AggregatePages(saveBufferSize, pages, pageBuffers)
+	go consumers.SavePageBuffers(wg, config, pr, pageBuffers)
 	wg.Add(1)
 
 	err = batch.RunPageJob(pr, processor, config)
@@ -104,53 +106,4 @@ func doBlobReverseLinks(config batch.Config, pr wiki.PageRepository) {
 	}
 
 	wg.Wait()
-}
-
-func aggregatePages(in <-chan wiki.Page, out chan<- []wiki.Page) {
-	var pageBuffer []wiki.Page
-
-	for page := range in {
-		pageBuffer = append(pageBuffer, page)
-
-		if len(pageBuffer) >= saveBufferSize {
-			out <- pageBuffer
-			pageBuffer = nil
-		}
-	}
-
-	close(out)
-}
-
-func savePages(wg *sync.WaitGroup, config batch.Config, pr wiki.PageRepository, in <-chan []wiki.Page) {
-	defer wg.Done()
-
-	counter := 0
-	for pageBuffer := range in {
-		err := pr.SavePages(pageBuffer)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		counter += len(pageBuffer)
-		if config.Debug {
-			log.Println("saved", counter)
-		}
-	}
-}
-
-func deleteTitles(wg *sync.WaitGroup, config batch.Config, pr wiki.PageRepository, in <-chan string) {
-	defer wg.Done()
-
-	counter := 0
-	for title := range in {
-		err := pr.DeleteTitle(title)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		counter++
-		if config.Debug {
-			log.Printf("deleted title %#v, (%d)\n", title, counter)
-		}
-	}
 }
