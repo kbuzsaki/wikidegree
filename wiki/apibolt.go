@@ -16,6 +16,7 @@ const defaultFileMode = 0600
 var redirectKey = []byte("redir")
 var linksKey = []byte("links")
 var linkersKey = []byte("linkers")
+var blobBucketKey = []byte("blob")
 
 const linkSeparator = "\n"
 
@@ -128,8 +129,34 @@ func (bl *boltLoader) loadPage(tx *bolt.Tx, title string) (Page, error) {
 	redirect := decodeTitle(bucket.Get(redirectKey))
 	links := decodeLinks(bucket.Get(linksKey))
 	linkers := decodeLinks(bucket.Get(linkersKey))
+	blob, err := loadBlob(bucket, blobBucketKey)
+	if err != nil {
+		return Page{}, fmt.Errorf("Unable to load blob for page '%s', error: %s", title, err)
+	}
 
-	return Page{Title: title, Redirect: redirect, Links: links, Linkers: linkers}, nil
+	return Page{Title: title, Redirect: redirect, Links: links, Linkers: linkers, Blob: blob}, nil
+}
+
+func loadBlob(bucket *bolt.Bucket, key []byte) (Blob, error) {
+	blobBucket := bucket.Bucket(key)
+	if blobBucket == nil {
+		return nil, nil
+	}
+
+	blob := make(Blob)
+	err := blobBucket.ForEach(func (key, val []byte) error {
+		blob[string(key)] = val
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(blob) == 0 {
+		return nil, nil
+	}
+
+	return blob, nil
 }
 
 func (bl *boltLoader) SavePage(page Page) error {
@@ -176,6 +203,15 @@ func (bl *boltLoader) savePage(tx *bolt.Tx, page Page) error {
 		return err
 	}
 
+	if len(page.Blob) != 0 {
+		blobBucket, err := bucket.CreateBucketIfNotExists(blobBucketKey)
+		if err != nil {
+			return err
+		}
+
+		putOrDeleteBlobEntries(blobBucket, page.Blob)
+	}
+
 	return nil
 }
 
@@ -187,6 +223,17 @@ func putOrDelete(bucket *bolt.Bucket, key []byte, val []byte) error {
 		}
 	} else {
 		err := bucket.Put(key, val)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func putOrDeleteBlobEntries(blobBucket *bolt.Bucket, blob Blob) error {
+	for key, val := range blob {
+		err := putOrDelete(blobBucket, []byte(key), val)
 		if err != nil {
 			return err
 		}

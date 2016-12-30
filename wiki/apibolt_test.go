@@ -13,6 +13,28 @@ var (
 	cats  = Page{Title: "Cats", Links: []string{"Dogs", "Mice"}, Linkers: []string{"Dogs", "Mice", "Humans"}}
 	dogs  = Page{Title: "Dogs", Links: []string{"Bones", "Cats"}, Linkers: []string{"Bones", "Cats"}}
 	mice  = Page{Title: "Mice", Links: []string{"Cheese", "Cats"}, Linkers: []string{"Cats"}}
+
+	noneBlob = Blob(nil)
+	aBlob    = Blob{
+		"a_key": []byte("a_val"),
+	}
+	bBlob = Blob{
+		"b_key": []byte("b_val"),
+	}
+	bothBlob = Blob{
+		"a_key": []byte("a_val"),
+		"b_key": []byte("b_val"),
+	}
+	deleteBlobA = Blob{
+		"a_key": nil,
+	}
+	deleteBlobB = Blob{
+		"b_key": nil,
+	}
+	deleteBothBlob = Blob{
+		"a_key": nil,
+		"b_key": nil,
+	}
 )
 
 func TestSaveLoadBasic(t *testing.T) {
@@ -77,6 +99,50 @@ func TestSaveLoadOverwrite(t *testing.T) {
 	if !reflect.DeepEqual(emptyCatsRedir, actual) {
 		t.Errorf("expected: '%#v', actual: '%#v'", emptyCatsRedir, actual)
 	}
+}
+
+func TestSaveLoadBlob(t *testing.T) {
+	pr := tempPageRepository()
+
+	page := Page{Title: "Cats", Links: []string{"Dogs", "Mice"}}
+	expected := page
+	mustSavePage(t, pr, page)
+	assertLoadedPageIs(t, pr, page.Title, expected)
+
+	page.Blob = aBlob
+	expected.Blob = aBlob
+	mustSavePage(t, pr, page)
+	assertLoadedPageIs(t, pr, page.Title, expected)
+
+	page.Blob = bBlob
+	expected.Blob = bothBlob
+	mustSavePage(t, pr, page)
+	assertLoadedPageIs(t, pr, page.Title, expected)
+
+	page.Blob = deleteBlobA
+	expected.Blob = bBlob
+	mustSavePage(t, pr, page)
+	assertLoadedPageIs(t, pr, page.Title, expected)
+
+	page.Blob = deleteBlobB
+	expected.Blob = noneBlob
+	mustSavePage(t, pr, page)
+	assertLoadedPageIs(t, pr, page.Title, expected)
+
+	page.Blob = bothBlob
+	expected.Blob = bothBlob
+	mustSavePage(t, pr, page)
+	assertLoadedPageIs(t, pr, page.Title, expected)
+
+	page.Blob = noneBlob
+	expected.Blob = bothBlob
+	mustSavePage(t, pr, page)
+	assertLoadedPageIs(t, pr, page.Title, expected)
+
+	page.Blob = deleteBothBlob
+	expected.Blob = noneBlob
+	mustSavePage(t, pr, page)
+	assertLoadedPageIs(t, pr, page.Title, expected)
 }
 
 func TestMissingLoad(t *testing.T) {
@@ -221,6 +287,24 @@ func TestDeleteTitle(t *testing.T) {
 	_, err = pr.LoadPage(cats.Title)
 	if err == nil || !strings.Contains(err.Error(), "No entry for title 'Cats'") {
 		t.Errorf("Failed to indicate deleted page was missing (err: %#v)", err)
+	}
+}
+
+func mustSavePage(t *testing.T, pr PageRepository, page Page) {
+	err := pr.SavePage(page)
+	if err != nil {
+		t.Errorf("failed to save page: %#v", page)
+	}
+}
+
+func assertLoadedPageIs(t *testing.T, pr PageRepository, title string, expected Page) {
+	actual, err := pr.LoadPage(title)
+	if err != nil {
+		t.Errorf("LoadPage errored with: %s", err)
+	}
+
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("expected: '%#v', actual: '%#v'", expected, actual)
 	}
 }
 

@@ -27,6 +27,13 @@ type Page struct {
 	Redirect   string   // the page that this page redirects to
 	Links      []string // pages that this page links to
 	Linkers    []string // pages that link to this page
+	Blob       Blob     // additional user-provided data stored along with the page
+}
+
+type Blob map[string][]byte
+
+func (blob Blob) Set(key string, val []byte) {
+	blob[key] = val
 }
 
 // Represents something that can load wiki pages
