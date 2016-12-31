@@ -24,6 +24,7 @@ func main() {
 	dbFilename := flag.String("db", wiki.DefaultIndexName, "the boltdb file")
 	batchSize := flag.Int("batch", defaultBatchSize, "number of pages to pass to the processing function at a time")
 	concurrency := flag.Int("concurrency", defaultConcurrency, "number of goroutines to use for processing")
+	skip := flag.Int("skip", 0, "number of titles to skip initially")
 	flag.Parse()
 
 	go func() {
@@ -38,6 +39,7 @@ func main() {
 	config := batch.Config{
 		BatchSize:   *batchSize,
 		Concurrency: *concurrency,
+		Skip:        *skip,
 		Debug:       *debug,
 	}
 

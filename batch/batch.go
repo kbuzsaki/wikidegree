@@ -25,6 +25,7 @@ type PageProcessor interface {
 type Config struct {
 	BatchSize   int
 	Concurrency int
+	Skip        int
 	Debug       bool
 }
 
@@ -93,12 +94,24 @@ func doSetup(config Config, setup func() error) (*sync.WaitGroup, chan []string,
 }
 
 func runJob(pr wiki.PageRepository, config Config, titleBuffers chan<- []string, errs <-chan error) error {
-	titleBuffer, err := pr.NextTitles("", config.BatchSize)
+	startTitle := ""
+
+	if config.Skip > 0 {
+		log.Printf("skipping %v titles...\n", config.Skip)
+		skippedTitle, err := pr.SkipTitles(startTitle, config.Skip)
+		if err != nil {
+			return err
+		}
+		startTitle = skippedTitle
+		log.Printf("skipped to title %v\n", startTitle)
+	}
+
+	titleBuffer, err := pr.NextTitles(startTitle, config.BatchSize)
 	if err != nil {
 		return err
 	}
 
-	counter := 0
+	counter := config.Skip
 	for len(titleBuffer) != 0 {
 		counter += len(titleBuffer)
 		if config.Debug && counter%printThresh == 0 {
