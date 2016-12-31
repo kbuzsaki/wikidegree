@@ -92,6 +92,7 @@ func doBlobReverseLinks(config batch.Config, pr wiki.PageRepository) {
 	wg := &sync.WaitGroup{}
 	pages := make(chan wiki.Page, (config.BatchSize*config.Concurrency)/2)
 	pageBuffers := make(chan []wiki.Page)
+	chunkedPageBuffers := make(chan []wiki.Page)
 
 	processor, err := processors.NewBlobReverseLinker(config, pr, pages)
 	if err != nil {
@@ -104,7 +105,8 @@ func doBlobReverseLinks(config batch.Config, pr wiki.PageRepository) {
 	}
 
 	go helpers.AggregatePageBlobs(pages, pageBuffers)
-	go consumers.SavePageBufferBlobs(wg, config, outPr, pageBuffers)
+	go helpers.ChunkPageBuffers(10000, pageBuffers, chunkedPageBuffers)
+	go consumers.SavePageBufferBlobs(wg, config, outPr, chunkedPageBuffers)
 	wg.Add(1)
 
 	err = batch.RunPageJob(pr, processor, config)
