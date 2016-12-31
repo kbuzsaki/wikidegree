@@ -271,6 +271,36 @@ func TestNextPage(t *testing.T) {
 	}
 }
 
+func TestSkipTitles(t *testing.T) {
+	pr := tempPageRepository()
+
+	// don't insert alphabetized
+	err := pr.SavePages([]Page{mice, dogs, bones, cats})
+	if err != nil {
+		t.Errorf("Bulk SavePages errored with: %s", err)
+	}
+
+	for i, page := range []Page{bones, cats, dogs, mice} {
+		title, err := pr.SkipTitles("", i)
+		if err != nil {
+			t.Errorf("SkipTitles errored with %s", err)
+		}
+
+		if title != page.Title {
+			t.Errorf("SkipTitle(%#v, %d) incorrect, expected %#v was %#v", "", i, page.Title, title)
+		}
+	}
+
+	title, err := pr.SkipTitles(bones.Title, 2)
+	if err != nil {
+		t.Errorf("SkipTitles errored with %s", err)
+	}
+
+	if title != dogs.Title {
+		t.Errorf("SkipTitle(%#v, %d) incorrect, expected %#v was %#v", bones.Title, 2, dogs.Title, title)
+	}
+}
+
 func TestDeleteTitle(t *testing.T) {
 	pr := tempPageRepository()
 

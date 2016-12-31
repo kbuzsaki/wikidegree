@@ -376,6 +376,52 @@ func (bl *boltLoader) NextTitles(title string, count int) ([]string, error) {
 	return titles, nil
 }
 
+func (bl *boltLoader) SkipTitles(title string, skip int) (string, error) {
+	if skip < 0 {
+		return "", fmt.Errorf("skip must be non-negative, was %d", skip)
+	}
+
+	if err := bl.retain(); err != nil {
+		return "", err
+	}
+	defer bl.release()
+
+	var nextTitle string
+	err := bl.index.View(func(tx *bolt.Tx) error {
+		cursor := tx.Cursor()
+
+		// TODO: clean up this nonsense
+		skipped := -1
+
+		key, val := cursor.Seek([]byte(title))
+		if string(key) == title {
+			key, val = cursor.Next()
+			skipped = 0
+		}
+
+		if skip == 0 {
+			nextTitle = string(key)
+			return nil
+		}
+
+		for ; key != nil; key, val = cursor.Next() {
+			// a nil value means that the key is to a bucket, which is a page
+			if val == nil {
+				skipped++
+
+				if skipped == skip {
+					nextTitle = string(key)
+					break
+				}
+			}
+		}
+
+		return nil
+	})
+
+	return nextTitle, err
+}
+
 func (bl *boltLoader) DeleteTitle(title string) error {
 	if err := bl.retain(); err != nil {
 		return err

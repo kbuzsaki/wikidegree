@@ -73,6 +73,7 @@ type PageRepository interface {
 	NextPage(title string) (Page, error)
 	NextPages(title string, count int) ([]Page, error)
 	NextTitles(title string, count int) ([]string, error)
+	SkipTitles(title string, skip int) (string, error)
 	DeleteTitle(title string) error
 	io.Closer
 }
