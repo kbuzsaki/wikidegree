@@ -13,6 +13,9 @@ func SavePageBuffers(wg *sync.WaitGroup, config batch.Config, ps wiki.PageSaver,
 
 	counter := 0
 	for pageBuffer := range pageBuffers {
+		if config.Debug {
+			log.Println("beginning save", counter)
+		}
 		err := ps.SavePages(pageBuffer)
 		if err != nil {
 			log.Fatal(err)
@@ -30,6 +33,9 @@ func SavePageBufferBlobs(wg *sync.WaitGroup, config batch.Config, ps wiki.PageSa
 
 	counter := 0
 	for pageBuffer := range pageBuffers {
+		if config.Debug {
+			log.Println("beginning save", counter)
+		}
 		err := ps.SavePageBlobs(pageBuffer)
 		if err != nil {
 			log.Fatal(err)

@@ -102,7 +102,8 @@ func runJob(pr wiki.PageRepository, config Config, titleBuffers chan<- []string,
 	for len(titleBuffer) != 0 {
 		counter += len(titleBuffer)
 		if config.Debug && counter%printThresh == 0 {
-			log.Println("processed", counter)
+			backlog := float64(len(titleBuffers))/float64(cap(titleBuffers))
+			log.Printf("populated counter=%d, backlog=%0.3f\n", counter, backlog)
 		}
 
 		select {
@@ -137,6 +138,9 @@ func pageJobWorker(wg *sync.WaitGroup, pr wiki.PageRepository, processor PagePro
 	defer wg.Done()
 
 	for titleBuffer := range titleBuffers {
+		backlog := float64(len(titleBuffers))/float64(cap(titleBuffers))
+		log.Printf("worker pulling buffer, backlog=%0.3f\n", backlog)
+
 		pageBuffer, err := pr.LoadPages(titleBuffer)
 		if err != nil {
 			log.Println("error loading pages:", err)

@@ -14,7 +14,7 @@ import (
 	"github.com/kbuzsaki/wikidegree/batch/helpers"
 )
 
-const saveBufferSize = 10000
+const saveBufferSize = 750000
 
 const defaultBatchSize = 10000
 const defaultConcurrency = 1
@@ -41,7 +41,9 @@ func main() {
 		Debug:       *debug,
 	}
 
-	doFilterDeadLinks(config, pr)
+	//doFilterDeadPages(config, pr)
+	//doFilterDeadLinks(config, pr)
+	doBlobReverseLinks(config, pr)
 }
 
 func doFilterDeadPages(config batch.Config, pr wiki.PageRepository) {
@@ -96,8 +98,13 @@ func doBlobReverseLinks(config batch.Config, pr wiki.PageRepository) {
 		log.Fatal(err)
 	}
 
+	outPr, err := wiki.GetBoltPageRepository("db/new.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	go helpers.AggregatePageBlobs(saveBufferSize, pages, pageBuffers)
-	go consumers.SavePageBufferBlobs(wg, config, pr, pageBuffers)
+	go consumers.SavePageBufferBlobs(wg, config, outPr, pageBuffers)
 	wg.Add(1)
 
 	err = batch.RunPageJob(pr, processor, config)

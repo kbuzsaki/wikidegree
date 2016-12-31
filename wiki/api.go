@@ -51,6 +51,7 @@ type PageLoader interface {
 type PageSaver interface {
 	SavePage(page Page) error
 	SavePages(pages []Page) error
+	SavePageBlobs(pages []Page) error
 	io.Closer
 }
 

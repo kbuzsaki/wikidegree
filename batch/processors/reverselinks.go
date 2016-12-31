@@ -22,12 +22,8 @@ func (cl *blobReverseLinker) Setup() error {
 }
 
 func (cl *blobReverseLinker) ProcessPage(page wiki.Page) error {
-	linkedPages, err := cl.pr.LoadPages(page.Links)
-	if err != nil {
-		return err
-	}
-
-	for _, linkedPage := range linkedPages {
+	for _, link := range page.Links {
+		linkedPage := wiki.Page{Title: link}
 		linkedPage.SetBlob(page.Title, present)
 		cl.out <- linkedPage
 	}
