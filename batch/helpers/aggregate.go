@@ -20,6 +20,8 @@ func AggregatePages(bufferSize int, pages <-chan wiki.Page, pageBuffers chan<- [
 		}
 	}
 
+	pageBuffers <- pageBuffer
+
 	close(pageBuffers)
 }
 
@@ -56,6 +58,8 @@ func AggregatePageBlobs(pages <-chan wiki.Page, pageBuffers chan<- []wiki.Page) 
 			}
 		}
 	}
+
+	pageBuffers <- pageBuffer
 
 	close(pageBuffers)
 }
