@@ -23,7 +23,7 @@ func AggregatePages(bufferSize int, pages <-chan wiki.Page, pageBuffers chan<- [
 	close(pageBuffers)
 }
 
-func AggregatePageBlobs(bufferSize int, pages <-chan wiki.Page, pageBuffers chan<- []wiki.Page) {
+func AggregatePageBlobs(pages <-chan wiki.Page, pageBuffers chan<- []wiki.Page) {
 	var pageBuffer []wiki.Page
 	pageLookup := make(map[string]*wiki.Page)
 	total := 0
@@ -53,9 +53,6 @@ func AggregatePageBlobs(bufferSize int, pages <-chan wiki.Page, pageBuffers chan
 			} else {
 				pageBuffer = append(pageBuffer, page)
 				pageLookup[page.Title] = &pageBuffer[len(pageBuffer)-1]
-
-				if len(pageBuffer) >= bufferSize {
-				}
 			}
 		}
 	}
