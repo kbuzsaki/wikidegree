@@ -91,7 +91,7 @@ func doFilterDeadLinks(config batch.Config, pr wiki.PageRepository) {
 func doBlobReverseLinks(config batch.Config, pr wiki.PageRepository) {
 	wg := &sync.WaitGroup{}
 	pages := make(chan wiki.Page, (config.BatchSize*config.Concurrency)/2)
-	pageBuffers := make(chan []wiki.Page, 2*config.Concurrency)
+	pageBuffers := make(chan []wiki.Page)
 
 	processor, err := processors.NewBlobReverseLinker(config, pr, pages)
 	if err != nil {

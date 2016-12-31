@@ -38,21 +38,24 @@ func AggregatePageBlobs(bufferSize int, pages <-chan wiki.Page, pageBuffers chan
 			log.Printf("aggregate blobs: buffer=%d, counter=%d, compression=%0.3f, total=%d, backlog=%0.3f\n", len(pageBuffer), counter, compression, total, backlog)
 		}
 
-		// check if there's already a buffered entry for this page, if there is then just merge the blobs
-		if currPage, ok := pageLookup[page.Title]; ok {
-			for key, val := range page.Blob {
-				currPage.SetBlob(key, val)
-			}
-		} else {
-			pageBuffer = append(pageBuffer, page)
-			pageLookup[page.Title] = &pageBuffer[len(pageBuffer) - 1]
+		select {
+		case pageBuffers <- pageBuffer:
+			log.Printf("sent buffer with length %d\n", len(pageBuffer))
+			pageBuffer = nil
+			pageLookup = make(map[string]*wiki.Page)
+			counter = 0
+		default:
+			// check if there's already a buffered entry for this page, if there is then just merge the blobs
+			if currPage, ok := pageLookup[page.Title]; ok {
+				for key, val := range page.Blob {
+					currPage.SetBlob(key, val)
+				}
+			} else {
+				pageBuffer = append(pageBuffer, page)
+				pageLookup[page.Title] = &pageBuffer[len(pageBuffer)-1]
 
-			if len(pageBuffer) >= bufferSize {
-				log.Printf("sending aggregated buffer (%d / %d)\n", len(pageBuffers), cap(pageBuffers))
-				pageBuffers <- pageBuffer
-				pageBuffer = nil
-				pageLookup = make(map[string]*wiki.Page)
-				counter = 0
+				if len(pageBuffer) >= bufferSize {
+				}
 			}
 		}
 	}
