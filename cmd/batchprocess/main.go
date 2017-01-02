@@ -175,3 +175,27 @@ func doCountLinks(config batch.Config, pr wiki.PageRepository) {
 
 	wg.Wait()
 }
+
+func doTitleNopper(config batch.Config, pr wiki.PageRepository) {
+	processor, err := processors.NewTitleNopper(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = batch.RunTitleJob(pr, processor, config)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func doPageNopper(config batch.Config, pr wiki.PageRepository) {
+	processor, err := processors.NewPageNopper(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = batch.RunPageJob(pr, processor, config)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
