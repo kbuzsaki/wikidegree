@@ -155,3 +155,23 @@ func getTitleRangePredicates(pr wiki.PageRepository, skipSize int) ([]helpers.Pa
 		startTitle = endTitle
 	}
 }
+
+func doCountLinks(config batch.Config, pr wiki.PageRepository) {
+	wg := &sync.WaitGroup{}
+	linkCounts := make(chan int, 2*config.Concurrency)
+
+	processor, err := processors.NewLinkCounter(config, linkCounts)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go consumers.HistogramInts(wg, config, linkCounts)
+	wg.Add(1)
+
+	err = batch.RunPageJob(pr, processor, config)
+	if err != nil {
+		log.Fatal("error running batch job: ", err)
+	}
+
+	wg.Wait()
+}
