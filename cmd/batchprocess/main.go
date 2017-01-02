@@ -138,14 +138,12 @@ func getTitleRangePredicates(pr wiki.PageRepository, skipSize int) ([]helpers.Pa
 
 	startTitle := ""
 	for {
-		endTitle, err := pr.SkipTitles(startTitle, saveBufferSize)
+		endTitle, err := pr.SkipTitles(startTitle, skipSize)
 		if err != nil {
 			return nil, err
 		}
 
-		predicates = append(predicates, func(page wiki.Page) bool {
-			return (startTitle <= page.Title) && (page.Title < endTitle || endTitle == "")
-		})
+		predicates = append(predicates, makeRangePredicate(startTitle, endTitle))
 
 		// if endTitle is empty string, then we've hit the end
 		if endTitle == "" {
@@ -153,6 +151,12 @@ func getTitleRangePredicates(pr wiki.PageRepository, skipSize int) ([]helpers.Pa
 		}
 
 		startTitle = endTitle
+	}
+}
+
+func makeRangePredicate(startTitle, endTitle string) helpers.PagePredicate {
+	return func(page wiki.Page) bool {
+		return (startTitle <= page.Title) && (page.Title < endTitle || endTitle == "")
 	}
 }
 
