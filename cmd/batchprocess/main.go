@@ -17,7 +17,8 @@ import (
 const saveBufferSize = 750000
 
 const defaultBatchSize = 10000
-const defaultConcurrency = 1
+// 6 has the highest throughput for the pageNopper processor
+const defaultConcurrency = 6
 
 const newDbFilename = "db/new.db"
 
@@ -25,7 +26,7 @@ func main() {
 	debug := flag.Bool("debug", false, "print debug output")
 	dbFilename := flag.String("db", wiki.DefaultIndexName, "the boltdb file")
 	batchSize := flag.Int("batch", defaultBatchSize, "number of pages to pass to the processing function at a time")
-	concurrency := flag.Int("concurrency", defaultConcurrency, "number of goroutines to use for processing")
+	concurrency := flag.Int("conc", defaultConcurrency, "number of goroutines to use for processing")
 	skip := flag.Int("skip", 0, "number of titles to skip initially")
 	flag.Parse()
 
