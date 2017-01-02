@@ -40,6 +40,14 @@ func (page *Page) SetBlob(key string, val []byte) {
 	page.Blob[key] = val
 }
 
+func (page *Page) IsRedirect() bool {
+	return page.Redirect != ""
+}
+
+func (page *Page) IsRedirected() bool {
+	return page.Redirector != ""
+}
+
 // Represents something that can load wiki pages
 // Takes the title of the page and returns the Page struct.
 type PageLoader interface {
