@@ -8,16 +8,18 @@ import (
 	"sync"
 
 	"github.com/kbuzsaki/wikidegree/batch"
-	"github.com/kbuzsaki/wikidegree/batch/processors"
-	"github.com/kbuzsaki/wikidegree/wiki"
 	"github.com/kbuzsaki/wikidegree/batch/consumers"
 	"github.com/kbuzsaki/wikidegree/batch/helpers"
+	"github.com/kbuzsaki/wikidegree/batch/processors"
+	"github.com/kbuzsaki/wikidegree/wiki"
 )
 
 const saveBufferSize = 750000
 
 const defaultBatchSize = 10000
 const defaultConcurrency = 1
+
+const newDbFilename = "db/new.db"
 
 func main() {
 	debug := flag.Bool("debug", false, "print debug output")
@@ -35,6 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer pr.Close()
 
 	config := batch.Config{
 		BatchSize:   *batchSize,
@@ -46,6 +49,7 @@ func main() {
 	//doFilterDeadPages(config, pr)
 	//doFilterDeadLinks(config, pr)
 	doBlobReverseLinks(config, pr)
+
 }
 
 func doFilterDeadPages(config batch.Config, pr wiki.PageRepository) {
@@ -91,30 +95,63 @@ func doFilterDeadLinks(config batch.Config, pr wiki.PageRepository) {
 }
 
 func doBlobReverseLinks(config batch.Config, pr wiki.PageRepository) {
-	wg := &sync.WaitGroup{}
-	pages := make(chan wiki.Page, (config.BatchSize*config.Concurrency)/2)
-	pageBuffers := make(chan []wiki.Page)
-	chunkedPageBuffers := make(chan []wiki.Page)
+	outPr, err := wiki.GetBoltPageRepository(newDbFilename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer outPr.Close()
 
-	processor, err := processors.NewBlobReverseLinker(config, pr, pages)
+	predicates, err := getTitleRangePredicates(pr, saveBufferSize)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	outPr, err := wiki.GetBoltPageRepository("db/new.db")
-	if err != nil {
-		log.Fatal(err)
+	for _, predicate := range predicates {
+		wg := &sync.WaitGroup{}
+		pages := make(chan wiki.Page, (config.BatchSize*config.Concurrency)/2)
+		filteredPages := make(chan wiki.Page, (config.BatchSize))
+		pageBuffers := make(chan []wiki.Page)
+		chunkedPageBuffers := make(chan []wiki.Page)
+
+		processor, err := processors.NewBlobReverseLinker(config, pr, pages)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		go helpers.FilterPages(predicate, pages, filteredPages)
+		go helpers.AggregatePageBlobs(filteredPages, pageBuffers)
+		go helpers.ChunkPageBuffers(10000, pageBuffers, chunkedPageBuffers)
+		go consumers.SavePageBufferBlobs(wg, config, outPr, chunkedPageBuffers)
+		wg.Add(1)
+
+		err = batch.RunPageJob(pr, processor, config)
+		if err != nil {
+			log.Fatal("error running batch job: ", err)
+		}
+
+		wg.Wait()
 	}
+}
 
-	go helpers.AggregatePageBlobs(pages, pageBuffers)
-	go helpers.ChunkPageBuffers(10000, pageBuffers, chunkedPageBuffers)
-	go consumers.SavePageBufferBlobs(wg, config, outPr, chunkedPageBuffers)
-	wg.Add(1)
+func getTitleRangePredicates(pr wiki.PageRepository, skipSize int) ([]helpers.PagePredicate, error) {
+	var predicates []helpers.PagePredicate
 
-	err = batch.RunPageJob(pr, processor, config)
-	if err != nil {
-		log.Fatal("error running batch job: ", err)
+	startTitle := ""
+	for {
+		endTitle, err := pr.SkipTitles(startTitle, saveBufferSize)
+		if err != nil {
+			return nil, err
+		}
+
+		predicates = append(predicates, func(page wiki.Page) bool {
+			return (startTitle <= page.Title) && (page.Title < endTitle || endTitle == "")
+		})
+
+		// if endTitle is empty string, then we've hit the end
+		if endTitle == "" {
+			return predicates, nil
+		}
+
+		startTitle = endTitle
 	}
-
-	wg.Wait()
 }
