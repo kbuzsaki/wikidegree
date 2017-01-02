@@ -35,8 +35,8 @@ func AggregatePageBlobs(pages <-chan wiki.Page, pageBuffers chan<- []wiki.Page) 
 		total++
 		counter++
 		if counter%printThresh == 0 {
-			compression := float64(len(pageBuffer))/float64(counter)
-			backlog := float64(len(pages))/float64(cap(pages))
+			compression := float64(len(pageBuffer)) / float64(counter)
+			backlog := float64(len(pages)) / float64(cap(pages))
 			log.Printf("aggregate blobs: buffer=%d, counter=%d, compression=%0.3f, total=%d, backlog=%0.3f\n", len(pageBuffer), counter, compression, total, backlog)
 		}
 

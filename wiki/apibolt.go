@@ -144,7 +144,7 @@ func loadBlob(bucket *bolt.Bucket, key []byte) (Blob, error) {
 	}
 
 	blob := make(Blob)
-	err := blobBucket.ForEach(func (key, val []byte) error {
+	err := blobBucket.ForEach(func(key, val []byte) error {
 		blob[string(key)] = append([]byte(nil), val...)
 		return nil
 	})

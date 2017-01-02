@@ -35,5 +35,3 @@ func (cl *blobReverseLinker) Teardown() error {
 	close(cl.out)
 	return nil
 }
-
-

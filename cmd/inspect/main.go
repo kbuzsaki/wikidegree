@@ -57,7 +57,7 @@ func dump(bucket *bolt.Bucket, limit int, prefix string) {
 	bucket.ForEach(func(key, val []byte) error {
 		if val == nil {
 			fmt.Printf("%sbucket: %#v\n", prefix, string(key))
-			dump(bucket.Bucket(key), limit, prefix + "\t")
+			dump(bucket.Bucket(key), limit, prefix+"\t")
 		} else {
 			stringVal := string(val)
 			if limit > 0 && len(stringVal) > limit {
