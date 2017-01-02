@@ -17,6 +17,7 @@ import (
 const saveBufferSize = 750000
 
 const defaultBatchSize = 10000
+
 // 6 has the highest throughput for the pageNopper processor
 const defaultConcurrency = 6
 
@@ -110,17 +111,15 @@ func doBlobReverseLinks(config batch.Config, pr wiki.PageRepository) {
 	for _, predicate := range predicates {
 		wg := &sync.WaitGroup{}
 		pages := make(chan wiki.Page, (config.BatchSize*config.Concurrency)/2)
-		filteredPages := make(chan wiki.Page, (config.BatchSize))
 		pageBuffers := make(chan []wiki.Page)
 		chunkedPageBuffers := make(chan []wiki.Page)
 
-		processor, err := processors.NewBlobReverseLinker(config, pr, pages)
+		processor, err := processors.NewFilteringBlobReverseLinker(config, predicate, pages)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		go helpers.FilterPages(predicate, pages, filteredPages)
-		go helpers.AggregatePageBlobs(filteredPages, pageBuffers)
+		go helpers.AggregatePageBlobs(pages, pageBuffers)
 		go helpers.ChunkPageBuffers(10000, pageBuffers, chunkedPageBuffers)
 		go consumers.SavePageBufferBlobs(wg, config, outPr, chunkedPageBuffers)
 		wg.Add(1)
