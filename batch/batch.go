@@ -37,7 +37,7 @@ func RunTitleJob(pr wiki.PageRepository, processor TitleProcessor, config Config
 
 	for i := 0; i < config.Concurrency; i++ {
 		wg.Add(1)
-		go titleJobWorker(wg, pr, processor, titleBuffers, errs)
+		go titleJobWorker(wg, config, pr, processor, titleBuffers, errs)
 	}
 
 	err = runJob(pr, config, titleBuffers, errs)
@@ -63,7 +63,7 @@ func RunPageJob(pr wiki.PageRepository, processor PageProcessor, config Config) 
 
 	for i := 0; i < config.Concurrency; i++ {
 		wg.Add(1)
-		go pageJobWorker(wg, pr, processor, titleBuffers, errs)
+		go pageJobWorker(wg, config, pr, processor, titleBuffers, errs)
 	}
 
 	err = runJob(pr, config, titleBuffers, errs)
@@ -132,7 +132,7 @@ func runJob(pr wiki.PageRepository, config Config, titleBuffers chan<- []string,
 	return nil
 }
 
-func titleJobWorker(wg *sync.WaitGroup, pr wiki.PageRepository, processor TitleProcessor, titleBuffers <-chan []string, errs chan<- error) {
+func titleJobWorker(wg *sync.WaitGroup, config Config, pr wiki.PageRepository, processor TitleProcessor, titleBuffers <-chan []string, errs chan<- error) {
 	defer wg.Done()
 
 	for titleBuffer := range titleBuffers {
@@ -147,12 +147,14 @@ func titleJobWorker(wg *sync.WaitGroup, pr wiki.PageRepository, processor TitleP
 	}
 }
 
-func pageJobWorker(wg *sync.WaitGroup, pr wiki.PageRepository, processor PageProcessor, titleBuffers <-chan []string, errs chan<- error) {
+func pageJobWorker(wg *sync.WaitGroup, config Config, pr wiki.PageRepository, processor PageProcessor, titleBuffers <-chan []string, errs chan<- error) {
 	defer wg.Done()
 
 	for titleBuffer := range titleBuffers {
 		backlog := float64(len(titleBuffers))/float64(cap(titleBuffers))
-		log.Printf("worker pulling buffer, backlog=%0.3f\n", backlog)
+		if config.Debug {
+			log.Printf("worker pulling buffer, backlog=%0.3f\n", backlog)
+		}
 
 		pageBuffer, err := pr.LoadPages(titleBuffer)
 		if err != nil {
