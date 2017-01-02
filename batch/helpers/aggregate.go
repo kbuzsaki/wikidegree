@@ -63,3 +63,40 @@ func AggregatePageBlobs(pages <-chan wiki.Page, pageBuffers chan<- []wiki.Page) 
 
 	close(pageBuffers)
 }
+
+func AggregatePageLinkers(pages <-chan wiki.Page, pageBuffers chan<- []wiki.Page) {
+	var pageBuffer []wiki.Page
+	pageLookup := make(map[string]*wiki.Page)
+	total := 0
+	counter := 0
+
+	for page := range pages {
+		total++
+		counter++
+		if counter%printThresh == 0 {
+			compression := float64(len(pageBuffer)) / float64(counter)
+			backlog := float64(len(pages)) / float64(cap(pages))
+			log.Printf("aggregate linkers: buffer=%d, counter=%d, compression=%0.3f, total=%d, backlog=%0.3f\n", len(pageBuffer), counter, compression, total, backlog)
+		}
+
+		select {
+		case pageBuffers <- pageBuffer:
+			log.Printf("sent buffer with length %d\n", len(pageBuffer))
+			pageBuffer = nil
+			pageLookup = make(map[string]*wiki.Page)
+			counter = 0
+		default:
+			// check if there's already a buffered entry for this page, if there is then just merge the linkers slices
+			if currPage, ok := pageLookup[page.Title]; ok {
+				currPage.Linkers = append(currPage.Linkers, page.Linkers...)
+			} else {
+				pageBuffer = append(pageBuffer, page)
+				pageLookup[page.Title] = &pageBuffer[len(pageBuffer)-1]
+			}
+		}
+	}
+
+	pageBuffers <- pageBuffer
+
+	close(pageBuffers)
+}

@@ -114,14 +114,23 @@ func doBlobReverseLinks(config batch.Config, pr wiki.PageRepository) {
 		pageBuffers := make(chan []wiki.Page)
 		chunkedPageBuffers := make(chan []wiki.Page)
 
-		processor, err := processors.NewFilteringBlobReverseLinker(config, predicate, pages)
+		/*
+			processor, err := processors.NewFilteringBlobReverseLinker(config, predicate, pages)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			go helpers.AggregatePageBlobs(pages, pageBuffers)
+		*/
+
+		processor, err := processors.NewFilteringReverseLinker(config, predicate, pages)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		go helpers.AggregatePageBlobs(pages, pageBuffers)
+		go helpers.AggregatePageLinkers(pages, pageBuffers)
 		go helpers.ChunkPageBuffers(10000, pageBuffers, chunkedPageBuffers)
-		go consumers.SavePageBufferBlobs(wg, config, outPr, chunkedPageBuffers)
+		go consumers.SavePageBuffers(wg, config, outPr, chunkedPageBuffers)
 		wg.Add(1)
 
 		err = batch.RunPageJob(pr, processor, config)

@@ -43,3 +43,35 @@ func (cl *blobReverseLinker) Teardown() error {
 	close(cl.out)
 	return nil
 }
+
+func NewFilteringReverseLinker(config batch.Config, predicate helpers.PagePredicate, out chan<- wiki.Page) (batch.PageProcessor, error) {
+	return &reverseLinker{predicate: predicate, config: config, out: out}, nil
+}
+
+type reverseLinker struct {
+	predicate helpers.PagePredicate
+	config    batch.Config
+	out       chan<- wiki.Page
+}
+
+func (cl *reverseLinker) Setup() error {
+	return nil
+}
+
+func (cl *reverseLinker) ProcessPage(page wiki.Page) error {
+	for _, link := range page.Links {
+		linkedPage := wiki.Page{Title: link}
+
+		if cl.predicate == nil || cl.predicate(linkedPage) {
+			linkedPage.Linkers = []string{page.Title}
+			cl.out <- linkedPage
+		}
+	}
+
+	return nil
+}
+
+func (cl *reverseLinker) Teardown() error {
+	close(cl.out)
+	return nil
+}
