@@ -19,7 +19,10 @@ func (cl *linkCounter) Setup() error {
 }
 
 func (cl *linkCounter) ProcessPage(page wiki.Page) error {
-	cl.out <- len(page.Links)
+	if !page.IsRedirect() && !page.IsRedirected() {
+		cl.out <- len(page.Links)
+	}
+
 	return nil
 }
 
